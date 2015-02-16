@@ -1,18 +1,15 @@
-Click configs
-=============
+= Click configs =
 
 Tobias Steinicke <tobias.steinicke@travelping.com>
 
 https://gitlab.tpip.net/tsteinicke/click-tp-package
 
-Configs
--------
+== Configs ==
 
-counter_test.click
-~~~~~~~~~~~~~~~~~~
+=== counter_test.click ===
+
 This config test the `TP_Counter` and `TP_SetFlowID`.
 
-ip-router.click
-~~~~~~~~~~~~~~~
+=== ip-router.click ===
 
 A pure IPv4 Router.
