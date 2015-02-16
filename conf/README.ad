@@ -1,0 +1,14 @@
+Click configs
+=============
+
+Tobias Steinicke <tobias.steinicke@travelping.com>
+
+https://gitlab.tpip.net/tsteinicke/click-tp-package
+
+Configs
+-------
+
+counter_test.click
+~~~~~~~~~~~~~~~~~~
+This config test the `TP_Counter` and `TP_SetFlowID`.
+

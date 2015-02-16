@@ -1,0 +1,66 @@
+Travelping element package
+==========================
+
+Tobias Steinicke <tobias.steinicke@travelping.com>
+
+https://gitlab.tpip.net/tsteinicke/click-tp-package
+
+
+Flow ID
+-------
+
+The Flow ID is an annotation of a packet. Currently the Flow ID is 64 Bit long
+and starts at an offset of 40 Byte of the annotation.
+
+Build
+-----
+1. run `autoconf`
+2. run `./configure`
+3. run `make`
+4. run `make install` as root
+
+Elements
+--------
+TP_SetFlowID
+~~~~~~~~~~~~
+This element sets the Flow ID of a packet according the parameter `FLOW_ID`.
+
+Ports
+^^^^^
+`TP_SetFlowID` have one agnostic input and one agnostic output.
+
+Usage
+^^^^^
+.TP_SetFlowID usage: sets the Flow ID to 1
+==========================
+
+ TP_SetFlowID(FLOW_ID 1)
+
+==========================
+
+TP_Counter
+~~~~~~~~~~
+This element havhave for each Flow ID one Counter. One Counter counts packets and 
+bytes. If a Flow ID is unknow it will create a new Counter for this Flow ID.
+
+Ports
+^^^^^
+`TP_SetFlowID` have one agnostic input and one agnostic output.
+
+Usage
+^^^^^
+.TP_Counter usage
+==========================
+
+ TP_Counter
+
+==========================
+
+Handlers
+^^^^^^^^
+`byte_count_all`: Returns the Byte Counters for each knowing Flow ID
+
+`pkt_count_all`: Returns the Packet Counters for each knowing Flow ID
+
+`reset_all`: Resets all Counters
+
