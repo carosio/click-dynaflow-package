@@ -12,3 +12,7 @@ counter_test.click
 ~~~~~~~~~~~~~~~~~~
 This config test the `TP_Counter` and `TP_SetFlowID`.
 
+ip-router.click
+~~~~~~~~~~~~~~~
+
+A pure IPv4 Router.
