@@ -1,5 +1,5 @@
-#ifndef TP_COUNTER_HH
-#define TP_COUNTER_HH
+#ifndef DF_COUNTER_HH
+#define DF_COUNTER_HH
 #include <click/element.hh>
 #include <click/hashcontainer.hh>
 #include <click/hashallocator.hh>
@@ -32,12 +32,12 @@ struct Simple_Counter_Container {
     }
 };
 
-class TP_Counter : public Element { public:
+class DF_Counter : public Element { public:
 
-    TP_Counter() CLICK_COLD;
-    ~TP_Counter() CLICK_COLD;
+    DF_Counter() CLICK_COLD;
+    ~DF_Counter() CLICK_COLD;
 
-    const char *class_name() const		{ return "TP_Counter"; }
+    const char *class_name() const		{ return "DF_Counter"; }
     const char *port_count() const		{ return PORTS_1_1; }
 
     Packet *simple_action(Packet *);

@@ -1,8 +1,8 @@
-= Travelping element package =
+= DynFlow element package =
 
 Tobias Steinicke <tobias.steinicke@travelping.com>
 
-https://gitlab.tpip.net/tsteinicke/click-tp-package
+https://gitlab.tpip.net/tsteinicke/click-df-package
 
 
 == Flow ID ==
@@ -19,38 +19,38 @@ and starts at an offset of 40 Byte of the annotation.
 
 == Elements ==
 
-=== TP_SetFlowID ===
+=== DF_SetFlowID ===
 
 This element sets the Flow ID of a packet according the parameter `FLOW_ID`.
 
 ==== Ports ====
 
-`TP_SetFlowID` have one agnostic input and one agnostic output.
+`DF_SetFlowID` have one agnostic input and one agnostic output.
 
 ==== Usage ====
 
-.TP_SetFlowID usage: sets the Flow ID to 1
+.DF_SetFlowID usage: sets the Flow ID to 1
 ==========================
 
- TP_SetFlowID(FLOW_ID 1)
+ DF_SetFlowID(FLOW_ID 1)
 
 ==========================
 
-=== TP_Counter ===
+=== DF_Counter ===
 
 This element havhave for each Flow ID one Counter. One Counter counts packets and 
 bytes. If a Flow ID is unknow it will create a new Counter for this Flow ID.
 
 ==== Ports ====
 
-`TP_SetFlowID` have one agnostic input and one agnostic output.
+`DF_SetFlowID` have one agnostic input and one agnostic output.
 
 ==== Usage ====
 
-.TP_Counter usage
+.DF_Counter usage
 ==========================
 
- TP_Counter
+ DF_Counter
 
 ==========================
 

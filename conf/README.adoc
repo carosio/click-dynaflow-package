@@ -8,7 +8,7 @@ https://gitlab.tpip.net/tsteinicke/click-tp-package
 
 === counter_test.click ===
 
-This config test the `TP_Counter` and `TP_SetFlowID`.
+This config test the `DF_Counter` and `DF_SetFlowID`.
 
 === ip-router.click ===
 

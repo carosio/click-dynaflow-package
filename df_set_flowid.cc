@@ -1,6 +1,6 @@
 #include <click/config.h>
-#include "tp_set_flowid.hh"
-#include "tp.hh"
+#include "df_set_flowid.hh"
+#include "df.hh"
 #include <click/hashallocator.hh>
 #include <click/error.hh>
 #include <click/confparse.hh>
@@ -8,16 +8,16 @@
 #include <click/handlercall.hh>
 CLICK_DECLS
 
-TP_SetFlowID::TP_SetFlowID()
+DF_SetFlowID::DF_SetFlowID()
 {
 }
 
-TP_SetFlowID::~TP_SetFlowID()
+DF_SetFlowID::~DF_SetFlowID()
 {
 }
 
 int
-TP_SetFlowID::configure(Vector<String> &conf, ErrorHandler *errh)
+DF_SetFlowID::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (Args(conf, this, errh)
       /* TODO: how can it readed as 64bit?*/
@@ -28,11 +28,11 @@ TP_SetFlowID::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 Packet *
-TP_SetFlowID::simple_action(Packet *p)
+DF_SetFlowID::simple_action(Packet *p)
 {
-    SET_TP_FLOWID_ANNO(p, reinterpret_cast<unsigned int&>(_flow_id));
+    SET_DF_FLOWID_ANNO(p, reinterpret_cast<unsigned int&>(_flow_id));
     return p;
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(TP_SetFlowID)
+EXPORT_ELEMENT(DF_SetFlowID)

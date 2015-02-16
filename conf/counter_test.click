@@ -1,27 +1,27 @@
 // counter_test.click
 // Act as a brigde between interfaces veth1 veth3.
 //
-// This Click config should test the correct function of the element TP_Counter.
+// This Click config should test the correct function of the element DF_Counter.
 
-require(package "travelping");
+require(package "dynflow");
 
 ControlSocket("TCP", 12345);
 
 FromDevice(veth1)
   -> r::RoundRobinSwitch;
 
-c::TP_Counter
+c::DF_Counter
   -> Queue
   -> ToDevice(veth3);
 
-r[0] -> TP_SetFlowID(FLOW_ID 0) -> c;
-r[1] -> TP_SetFlowID(FLOW_ID 1) -> c;
-r[2] -> TP_SetFlowID(FLOW_ID 2) -> c;
-r[3] -> TP_SetFlowID(FLOW_ID 3) -> c;
+r[0] -> DF_SetFlowID(FLOW_ID 0) -> c;
+r[1] -> DF_SetFlowID(FLOW_ID 1) -> c;
+r[2] -> DF_SetFlowID(FLOW_ID 2) -> c;
+r[3] -> DF_SetFlowID(FLOW_ID 3) -> c;
 
 
 FromDevice(veth3)
-  -> TP_SetFlowID(FLOW_ID 2)
-  -> TP_Counter
+  -> DF_SetFlowID(FLOW_ID 2)
+  -> DF_Counter
   -> Queue
   -> ToDevice(veth1);

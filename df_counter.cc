@@ -1,6 +1,6 @@
 #include <click/config.h>
-#include "tp_counter.hh"
-#include "tp.hh"
+#include "df_counter.hh"
+#include "df.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/args.hh>
@@ -17,11 +17,11 @@ Simple_Counter::Simple_Counter() {
     reset();
 }
 
-TP_Counter::TP_Counter()
+DF_Counter::DF_Counter()
 {
 }
 
-TP_Counter::~TP_Counter()
+DF_Counter::~DF_Counter()
 {
     for(Table::iterator it = _table.begin(); it; it++) {
         Simple_Counter_Container *scc = _table.erase(it);
@@ -30,9 +30,9 @@ TP_Counter::~TP_Counter()
 }
 
 Packet *
-TP_Counter::simple_action(Packet *p)
+DF_Counter::simple_action(Packet *p)
 {
-    uint64_t flow_id = TP_FLOWID_ANNO(p);
+    uint64_t flow_id = DF_FLOWID_ANNO(p);
     Simple_Counter_Container *scc = NULL;
     Table::iterator it = _table.find(flow_id);
     if(!it) {
@@ -53,9 +53,9 @@ TP_Counter::simple_action(Packet *p)
 
 enum { H_BYTE_COUNT, H_PKT_COUNT, H_BYTE_COUNT_ALL, H_PKT_COUNT_ALL, H_RESET_ALL };
 
-String TP_Counter::pkt_count_all_handler(Element* e, void * thunk)
+String DF_Counter::pkt_count_all_handler(Element* e, void * thunk)
 {
-    TP_Counter *self = (TP_Counter *)e;
+    DF_Counter *self = (DF_Counter *)e;
     String s = String();
     for(Table::iterator it = self->_table.begin(); it; it++) {
         s += String(it->_flow_id);
@@ -66,9 +66,9 @@ String TP_Counter::pkt_count_all_handler(Element* e, void * thunk)
     return s;
 }
 
-String TP_Counter::byte_count_all_handler(Element* e, void * thunk)
+String DF_Counter::byte_count_all_handler(Element* e, void * thunk)
 {
-    TP_Counter *self = (TP_Counter *)e;
+    DF_Counter *self = (DF_Counter *)e;
     String s = String();
     for(Table::iterator it = self->_table.begin(); it; it++) {
         s += String(it->_flow_id);
@@ -79,9 +79,9 @@ String TP_Counter::byte_count_all_handler(Element* e, void * thunk)
     return s;
 }
 
-String TP_Counter::reset_all_handler(Element* e, void * thunk)
+String DF_Counter::reset_all_handler(Element* e, void * thunk)
 {
-    TP_Counter *self = (TP_Counter *)e;
+    DF_Counter *self = (DF_Counter *)e;
     for(Table::iterator it = self->_table.begin(); it; it++) {
         it->counter.reset();
     }
@@ -89,7 +89,7 @@ String TP_Counter::reset_all_handler(Element* e, void * thunk)
 }
 
 void
-TP_Counter::add_handlers()
+DF_Counter::add_handlers()
 {
     add_read_handler("byte_count_all", byte_count_all_handler, H_BYTE_COUNT_ALL);
     add_read_handler("pkt_count_all", pkt_count_all_handler, H_PKT_COUNT_ALL);
@@ -97,4 +97,4 @@ TP_Counter::add_handlers()
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(TP_Counter)
+EXPORT_ELEMENT(DF_Counter)
