@@ -3,7 +3,7 @@
 //
 // This Click config should test the correct function of the element DF_Counter.
 
-require(package "dynflow");
+require(package "dynaflow");
 
 ControlSocket("TCP", 12345);
 

@@ -1,5 +1,5 @@
 dnl -*- mode: shell-script -*-
-dnl 'configure.ac' file for the DynFlow package
+dnl 'configure.ac' file for the DynaFlow package
 dnl Process this file with autoconf to produce a configure script.
 dnl
 dnl Permission is hereby granted, free of charge, to any person obtaining a
@@ -12,10 +12,10 @@ dnl The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
 dnl notice is a summary of the Click LICENSE file; the license in that file is
 dnl legally binding.
 
-AC_INIT(click-dynflow-package, 0.0.1)
+AC_INIT(click-dynaflow-package, 0.0.1)
 AC_SUBST(ac_configure_args)
 
-CLICKPACKAGENAME=dynflow
+CLICKPACKAGENAME=dynaflow
 AC_SUBST(CLICKPACKAGENAME)
 
 

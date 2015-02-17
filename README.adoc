@@ -1,4 +1,4 @@
-= DynFlow element package =
+= DynaFlow element package =
 
 Tobias Steinicke <tobias.steinicke@travelping.com>
 
