@@ -14,6 +14,10 @@ This config test the `DF_Counter` and `DF_SetFlowID`.
 
 A pure IPv4 Router.
 
+=== ip-router-nat.click ===
+
+A pure IPv4 Router with NAT.
+
 === ipc-test.click ===
 
 This small config helps to understand the IPClassifier element.
