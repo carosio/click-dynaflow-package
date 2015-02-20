@@ -18,6 +18,11 @@ A pure IPv4 Router.
 
 A pure IPv4 Router with NAT.
 
+It is important that the interface, used in the config, didn't have an IP
+address. If there have one, the Kernel network stack will kept track of the
+connections and will reset them if he can't map the used IP addresses in the
+packet.
+
 === ipc-test.click ===
 
 This small config helps to understand the IPClassifier element.
