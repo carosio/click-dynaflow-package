@@ -16,5 +16,4 @@ A pure IPv4 Router.
 
 === ipc-test.click ===
 
-This small config should test the IPClassifier, but forces Click to a
-segmentation fault.
+This small config helps to understand the IPClassifier element.
