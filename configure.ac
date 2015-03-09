@@ -75,6 +75,25 @@ AC_SUBST(BUILD_USERLEVEL)
 AC_SUBST(BUILD_LINUXMODULE)
 AC_SUBST(BUILD_BSDMODULE)
 
+AS_IF([test "x$BUILD_LINUXMODULE" == "xyes"],
+    [AC_MSG_ERROR([Linux kernel module is incompatible with Erlang Node communication.])])
+
+ERL_CRASH_DUMP=/dev/null
+EIBASE="`erl -noshell -noinput -eval 'io:format (\"~s\", [[ code:lib_dir (erl_interface) ]])' -s erlang halt`"
+AC_SUBST([EIBASE])
+
+ERTSBASE="`erl -noshell -noinput -eval 'io:format (\"~s\", [[ \"/\" ++ filename:join (lists:reverse ([ \"erts-\" ++ erlang:system_info (version) | tl (lists:reverse (string:tokens (code:lib_dir (), \"/\"))) ])) ]]).' -s erlang halt `"
+AC_SUBST([ERTSBASE])
+
+ERL_INCLUDES="-I${EIBASE}/include -I${ERTSBASE}/include"
+ERL_LDFLAGS="-L${EIBASE}/lib -L${ERTSBASE}/lib"
+
+AC_CHECK_HEADER([ei.h], [], [AC_MSG_ERROR([can\'t find erl_interface.h; under debian you need to install erlang-src])], [])
+AC_CHECK_LIB([ei], [ei_set_compat_rel], [], [AC_MSG_ERROR([can't find libei])], [])
+dnl AC_CHECK_LIB([erl_interface], [erl_compare_ext], [], [AC_MSG_ERROR([can't find liberl_interface])], [])
+
+AC_SUBST([ERL_INCLUDES])
+AC_SUBST([ERL_LDFLAGS])
 
 dnl
 dnl Output

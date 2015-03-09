@@ -31,8 +31,10 @@ KVERSIONFLAGS = --gpl
 #STRIP_UPACKAGE = $(STRIP) -g
 
 # Set these variables as required.
-DEFS = @DEFS@ $(CLICKDEFS)
-INCLUDES = -I. -I$(top_builddir) -I$(srcdir) $(CLICKINCLUDES)
+DEFS = @DEFS@ $(CLICKDEFS) -pthread
+INCLUDES = -I. -I$(top_builddir) -I$(srcdir) $(CLICKINCLUDES) @ERL_INCLUDES@
+LDFLAGS = -shared @ERL_LDFLAGS@
+PACKAGE_LIBS = @LIBS@
 
 # Set this variable to force 'click-elem2package' to include a header,
 # such as your package's '<config.h>', if necessary.
@@ -40,6 +42,9 @@ INCLUDES = -I. -I$(top_builddir) -I$(srcdir) $(CLICKINCLUDES)
 
 # END OF VARIABLES THAT MAY CHANGE BETWEEN PACKAGES
 
+# Erlang support
+EIBASE = @EIBASE@
+ERTSBASE = @ERTSBASE@
 
 # Everything below here will probably stay unchanged
 
