@@ -6,6 +6,7 @@
 #include <click/confparse.hh>
 #include <click/args.hh>
 #include <click/handlercall.hh>
+#include <click/bighashmap.hh>
 #include <fcntl.h>
 #include "ei.h"
 
@@ -201,6 +202,279 @@ DF_Store::connection::~connection()
     ei_x_free(&x_out);
 }
 
+// data structure decoder functions
+
+int
+DF_Store::connection::ei_decode_ipaddress(IPAddress &addr)
+{
+    int arity;
+    uint32_t a = 0;
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 4)
+	return -1;
+
+    for (int i = 0; i < 4; i++) {
+	unsigned long p;
+	if (ei_decode_ulong(x_in.buff, &x_in.index, &p) != 0)
+	    return -1;
+	a = a << 8;
+	a |= p;
+    }
+
+    addr = IPAddress(htonl(a));
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_string(String &str)
+{
+    int type;
+    int size;
+
+    if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0)
+	return -1;
+
+    str = String::make_uninitialized(size);
+    // NB: mutable_c_str() creates space for the terminating null character
+    if (char *x = str.mutable_c_str()) {
+	if (::ei_decode_string(x_in.buff, &x_in.index, x) != 0)
+	    return -1;
+    } else
+	return -1;
+
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_binary_string(String &str)
+{
+    int type;
+    int size;
+    long bin_size;
+
+    if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0
+	|| type != ERL_BINARY_EXT)
+	return -1;
+
+    str = String::make_uninitialized(size);
+    // NB: mutable_c_str() creates space for the terminating null character
+    if (char *x = str.mutable_c_str()) {
+	if (::ei_decode_binary(x_in.buff, &x_in.index, x, &bin_size) != 0)
+	    return -1;
+    } else
+	return -1;
+
+    return 0;
+}
+
+// rule sample: {{{10, 0, 1, 0}, 24}, "Class 1"}
+int
+DF_Store::connection::ei_decode_group(GroupTable &groups)
+{
+    int arity;
+    unsigned long prefix_len;
+    IPAddress addr;
+    IPAddress prefix;
+    String group_name;
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 2
+	|| ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 2
+	|| ei_decode_ipaddress(addr) != 0
+	|| ei_decode_ulong(x_in.buff, &x_in.index, &prefix_len) != 0
+	|| ei_decode_string(group_name) != 0)
+	return -1;
+
+    click_chatter("ei_decode_group: %s/%d -> %s\n", addr.unparse().c_str(), prefix_len, group_name.c_str());
+    groups.push_back(new group(addr, IPAddress::make_prefix(prefix_len), group_name));
+    return 0;
+}
+
+// rules sample: [{{{10, 0, 1, 0}, 24}, "Class 1"}, {{{10, 0, 2, 0}, 24}, "Class 2"}],
+int
+DF_Store::connection::ei_decode_groups(GroupTable &groups)
+{
+    int arity;
+
+    if (ei_decode_list_header(x_in.buff, &x_in.index, &arity) != 0)
+	return -1;
+
+    for (;arity > 0; arity--)
+	if (ei_decode_group(groups) != 0)
+	    return -1;
+
+    return 0;
+}
+
+// Key: {inet,<<172,20,48,19>>}
+int
+DF_Store::connection::ei_decode_client_key(ClientKey &key)
+{
+    int arity;
+    int type;
+    int size;
+    long bin_size;
+    char addr_type[MAXATOMLEN+1] = {0};
+    struct in_addr addr;
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 2
+	|| ei_decode_atom(x_in.buff, &x_in.index, addr_type) < 0)
+	return -1;
+
+    if (strncmp(addr_type, "inet", 4) == 0) {
+	if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0
+	    || type != ERL_BINARY_EXT
+	    || size != 4
+	    || ::ei_decode_binary(x_in.buff, &x_in.index, (void *)&addr, &bin_size) != 0
+	    || bin_size != 4)
+	    return -1;
+	key = ClientKey(AF_INET, IPAddress(addr));
+    }
+    else
+	return -1;
+
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_nat()
+{
+    //TODO: implement NAT decoding
+    ei_skip_term(x_in.buff, &x_in.index);
+
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_client_rules(ClientRuleTable &rules)
+{
+    int arity;
+    String src;
+    String dst;
+    char out_atom[MAXATOMLEN+1] = {0};
+    int out = 0;
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 3
+	|| ei_decode_binary_string(src) != 0
+	|| ei_decode_binary_string(dst) != 0
+	|| ei_decode_atom(x_in.buff, &x_in.index, out_atom) < 0)
+	return -1;
+
+    if (strncmp(out_atom, "deny", 4) == 0)
+	out = 0;
+    else if (strncmp(out_atom, "drop", 4) == 0)
+	out = 1;
+    else if (strncmp(out_atom, "accept", 6) == 0)
+	out = 2;
+
+    rules.push_back(new ClientRule(src, dst, out));
+    return 0;
+}
+
+// Value: {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}
+int
+DF_Store::connection::ei_decode_client_value(ClientValue &value)
+{
+    int arity;
+    String group;
+    ClientRuleTable rules;
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 3
+	|| ei_decode_binary_string(group) != 0
+	|| ei_decode_nat() != 0
+	|| ei_decode_client_rules(rules) != 0)
+	return -1;
+
+    value = ClientValue(group);
+    return 0;
+}
+
+// client sample {{inet,<<172,20,48,19>>}, {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}}
+int
+DF_Store::connection::ei_decode_client(ClientTable &clients)
+{
+    int arity;
+    ClientKey key;
+    ClientValue value;
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 2
+	|| ei_decode_client_key(key) != 0
+	|| ei_decode_client_value(value) != 0)
+	return -1;
+
+    clients.insert(key, value);
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_clients(ClientTable &clients)
+{
+    int arity;
+
+    if (ei_decode_list_header(x_in.buff, &x_in.index, &arity) != 0)
+	return -1;
+
+    for (;arity > 0; arity--)
+	if (ei_decode_client(clients) != 0)
+	    return -1;
+
+    return 0;
+}
+
+// Erlang call handlers
+
+void
+DF_Store::connection::erl_bind(int arity)
+{
+    if (arity != 2
+	|| ei_decode_pid(x_in.buff, &x_in.index, &bind_pid) != 0)
+	ei_x_encode_atom(&x_out, "badarg");
+    else
+	ei_x_encode_atom(&x_out, "ok");
+}
+
+void
+DF_Store::connection::erl_init(int arity)
+{
+    GroupTable groups;
+    ClientTable clients;
+
+    click_chatter("erl_init: %d\n", arity);
+    if (arity != 3) {
+	ei_x_encode_atom(&x_out, "badarg");
+	return;
+    }
+
+    if (ei_decode_groups(groups) != 0
+	|| ei_decode_clients(clients) != 0) {
+	ei_x_encode_atom(&x_out, "badarg");
+	return;
+    }
+
+    ei_x_encode_atom(&x_out, "ok");
+}
+
+// Erlang generic call handlers
+
+void
+DF_Store::connection::handle_gen_call_click(const char *fn, int arity)
+{
+    if (strncmp(fn, "bind", 4) == 0) {
+	erl_bind(arity);
+    }
+    if (strncmp(fn, "init", 4) == 0) {
+	erl_init(arity);
+    }
+    else
+	ei_x_encode_atom(&x_out, "error");
+}
+
 void
 DF_Store::connection::handle_gen_call(const char *to)
 {
@@ -233,6 +507,9 @@ DF_Store::connection::handle_gen_call(const char *to)
 	if (strncmp(to, "net_kernel", 10) == 0 &&
 	    strncmp(fn, "is_auth", 7) == 0) {
 		ei_x_encode_atom(&x_out, "yes");
+	}
+	else if (strncmp(to, "click", 6) == 0) {
+		handle_gen_call_click(fn, arity);
 	}
 	else
 		ei_x_encode_atom(&x_out, "error");
