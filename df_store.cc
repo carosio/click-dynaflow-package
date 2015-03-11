@@ -7,6 +7,7 @@
 #include <click/args.hh>
 #include <click/handlercall.hh>
 #include <click/bighashmap.hh>
+#include <click/straccum.hh>
 #include <fcntl.h>
 #include "ei.h"
 
@@ -187,6 +188,60 @@ DF_Store::cleanup(CleanupStage)
         }
 }
 
+StringAccum& DF_Store::group::unparse(StringAccum& sa) const
+{
+    sa << addr.unparse_with_mask(prefix) << " -> " << group_name;
+    return sa;
+}
+
+String DF_Store::group::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
+
+const char *DF_Store::NATTranslation::Translations[] =
+    { "SymetricAddressKeyed",
+      "AddressKeyed",
+      "PortKeyed",
+      "Random",
+      "RandomPersistent",
+      "Masquerade" };
+
+StringAccum& DF_Store::NATTranslation::unparse(StringAccum& sa) const
+{
+    switch (type) {
+    case SymetricAddressKeyed:
+    case AddressKeyed:
+	sa << Translations[type] << ": " << nat_addr;
+	break;
+
+    case PortKeyed:
+	sa << Translations[type] << ": " << nat_addr << '[' << min_port << '-' << max_port << ']';
+	break;
+
+    case Random:
+    case RandomPersistent:
+    case Masquerade:
+	sa << Translations[type];
+	break;
+
+    default:
+	sa << "invalid";
+	break;
+    }
+
+    return sa;
+}
+
+String DF_Store::NATTranslation::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
+
 DF_Store::connection::connection(int fd_, ErlConnect *conp_)
     : fd(fd_), in_closed(false), out_closed(false),
       conp(*conp_) {
@@ -298,12 +353,37 @@ DF_Store::connection::ei_decode_groups(GroupTable &groups)
 {
     int arity;
 
+#if defined(DEBUG)
+    click_chatter("ei_decode_groups: %s\n", unparse(x_in).c_str());
+#endif
+
     if (ei_decode_list_header(x_in.buff, &x_in.index, &arity) != 0)
 	return -1;
 
-    for (;arity > 0; arity--)
+#if defined(DEBUG)
+    click_chatter("ei_decode_groups: %d\n", arity);
+#endif
+
+    if (arity == 0)
+	return 0;
+
+    do {
+	int type;
+	int size;
+
+	if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0)
+	    return -1;
+
+	click_chatter("ei_decode_nat_list: %c, %d\n", type, size);
+	if (type == ERL_NIL_EXT) {
+	    if (ei_skip_term(x_in.buff, &x_in.index) != 0)
+		return -1;
+	    break;
+	}
+
 	if (ei_decode_group(groups) != 0)
 	    return -1;
+    } while (arity-- > 0);
 
     return 0;
 }
@@ -318,6 +398,10 @@ DF_Store::connection::ei_decode_client_key(ClientKey &key)
     long bin_size;
     char addr_type[MAXATOMLEN+1] = {0};
     struct in_addr addr;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_client_key: %s\n", unparse(x_in).c_str());
+#endif
 
     if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
 	|| arity != 2
@@ -340,22 +424,126 @@ DF_Store::connection::ei_decode_client_key(ClientKey &key)
 }
 
 int
-DF_Store::connection::ei_decode_nat()
+DF_Store::connection::ei_decode_nat_translation(const char *type_atom, NATTranslation &translation)
 {
-    //TODO: implement NAT decoding
-    ei_skip_term(x_in.buff, &x_in.index);
+    int arity;
+    unsigned int type;
+    IPAddress nat_addr;
+    long unsigned int min_port = 0;
+    long unsigned int max_port = 0;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_nat_translation: %s\n", unparse(x_in).c_str());
+#endif
+
+    for (type = 0; type < sizeof(NATTranslation::Translations) / sizeof(char *); type++)
+	if (strcmp(NATTranslation::Translations[type], type_atom) == 0)
+	    break;
+
+    switch (type) {
+    case NATTranslation::SymetricAddressKeyed:
+    case NATTranslation::AddressKeyed:
+	if (ei_decode_ipaddress(nat_addr) != 0)
+	    return -1;
+	break;
+
+    case NATTranslation::PortKeyed:
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 3
+	|| ei_decode_ipaddress(nat_addr) != 0
+	|| ei_decode_ulong(x_in.buff, &x_in.index, &min_port) != 0
+	|| ei_decode_ulong(x_in.buff, &x_in.index, &max_port) != 0)
+	break;
+
+    case NATTranslation::Random:
+    case NATTranslation::RandomPersistent:
+    case NATTranslation::Masquerade:
+	if (ei_skip_term(x_in.buff, &x_in.index) != 0)
+	    return -1;
+	break;
+
+    default:
+	return -1;
+    }
+
+    translation = NATTranslation(type, nat_addr, min_port, max_port);
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_nat(NATTable &nat_rules)
+{
+    int arity;
+    IPAddress addr;
+    char translation_atom[MAXATOMLEN+1] = {0};
+    NATTranslation translation;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_nat: %s\n", unparse(x_in).c_str());
+#endif
+
+    if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
+	|| arity != 3
+	|| ei_decode_ipaddress(addr) != 0
+	|| ei_decode_atom(x_in.buff, &x_in.index, translation_atom) < 0
+	|| ei_decode_nat_translation(translation_atom, translation) != 0)
+	return -1;
+
+    click_chatter("ei_decode_nat: %s -> %s\n", addr.unparse().c_str(), translation.unparse().c_str());
+    nat_rules.insert(addr, translation);
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_nat_list(NATTable &nat_rules)
+{
+    int arity;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_nat_list: %s\n", unparse(x_in).c_str());
+#endif
+
+    if (ei_decode_list_header(x_in.buff, &x_in.index, &arity) != 0)
+	return -1;
+
+    click_chatter("ei_decode_nat_list: %d\n", arity);
+
+    if (arity == 0)
+	return 0;
+
+    do {
+	int type;
+	int size;
+
+	if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0)
+	    return -1;
+
+	click_chatter("ei_decode_nat_list: %c, %d\n", type, size);
+	if (type == ERL_NIL_EXT) {
+	    if (ei_skip_term(x_in.buff, &x_in.index) != 0)
+		return -1;
+	    break;
+	}
+
+	if (ei_decode_nat(nat_rules) != 0)
+	    return -1;
+    } while (arity-- > 0);
 
     return 0;
 }
 
 int
-DF_Store::connection::ei_decode_client_rules(ClientRuleTable &rules)
+DF_Store::connection::ei_decode_client_rule(ClientRuleTable &rules)
 {
     int arity;
     String src;
     String dst;
     char out_atom[MAXATOMLEN+1] = {0};
     int out = 0;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_client_rules: %s\n", unparse(x_in).c_str());
+#endif
 
     if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
 	|| arity != 3
@@ -364,14 +552,56 @@ DF_Store::connection::ei_decode_client_rules(ClientRuleTable &rules)
 	|| ei_decode_atom(x_in.buff, &x_in.index, out_atom) < 0)
 	return -1;
 
-    if (strncmp(out_atom, "deny", 4) == 0)
+#if defined(DEBUG)
+    click_chatter("ei_decode_client_rules: atom: %s\n", out_atom);
+#endif
+
+    if (strcmp(out_atom, "deny") == 0)
 	out = 0;
-    else if (strncmp(out_atom, "drop", 4) == 0)
+    else if (strcmp(out_atom, "drop") == 0)
 	out = 1;
-    else if (strncmp(out_atom, "accept", 6) == 0)
+    else if (strcmp(out_atom, "accept") == 0)
 	out = 2;
 
     rules.push_back(new ClientRule(src, dst, out));
+    return 0;
+}
+
+int
+DF_Store::connection::ei_decode_client_rules_list(ClientRuleTable &rules)
+{
+    int arity;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_client_rules_list: %s\n", unparse(x_in).c_str());
+#endif
+
+    if (ei_decode_list_header(x_in.buff, &x_in.index, &arity) != 0)
+	return -1;
+
+    click_chatter("ei_decode_client_rules_list: %d\n", arity);
+
+    if (arity == 0)
+	return 0;
+
+    do {
+	int type;
+	int size;
+
+	if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0)
+	    return -1;
+
+	click_chatter("ei_decode_client_rules_list: %c, %d\n", type, size);
+	if (type == ERL_NIL_EXT) {
+	    if (ei_skip_term(x_in.buff, &x_in.index) != 0)
+		return -1;
+	    break;
+	}
+
+	if (ei_decode_client_rule(rules) != 0)
+	    return -1;
+    } while (arity-- > 0);
+
     return 0;
 }
 
@@ -381,16 +611,21 @@ DF_Store::connection::ei_decode_client_value(ClientValue &value)
 {
     int arity;
     String group;
+    NATTable nat_rules;
     ClientRuleTable rules;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_client_value: %s\n", unparse(x_in).c_str());
+#endif
 
     if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
 	|| arity != 3
 	|| ei_decode_binary_string(group) != 0
-	|| ei_decode_nat() != 0
-	|| ei_decode_client_rules(rules) != 0)
+	|| ei_decode_nat_list(nat_rules) != 0
+	|| ei_decode_client_rules_list(rules) != 0)
 	return -1;
 
-    value = ClientValue(group);
+    value = ClientValue(group, nat_rules, rules);
     return 0;
 }
 
@@ -401,6 +636,10 @@ DF_Store::connection::ei_decode_client(ClientTable &clients)
     int arity;
     ClientKey key;
     ClientValue value;
+
+#if defined(DEBUG)
+    click_chatter("ei_decode_client: %s\n", unparse(x_in).c_str());
+#endif
 
     if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) != 0
 	|| arity != 2
@@ -417,12 +656,35 @@ DF_Store::connection::ei_decode_clients(ClientTable &clients)
 {
     int arity;
 
+#if defined(DEBUG)
+    click_chatter("ei_decode_clients: %s\n", unparse(x_in).c_str());
+#endif
+
     if (ei_decode_list_header(x_in.buff, &x_in.index, &arity) != 0)
 	return -1;
 
-    for (;arity > 0; arity--)
+    click_chatter("ei_decode_clients: %d\n", arity);
+
+    if (arity == 0)
+	return 0;
+
+    do {
+	int type;
+	int size;
+
+	if (ei_get_type(x_in.buff, &x_in.index, &type, &size) != 0)
+	    return -1;
+
+	click_chatter("ei_decode_nat_list: %c, %d\n", type, size);
+	if (type == ERL_NIL_EXT) {
+	    if (ei_skip_term(x_in.buff, &x_in.index) != 0)
+		return -1;
+	    break;
+	}
+
 	if (ei_decode_client(clients) != 0)
 	    return -1;
+    } while (arity-- > 0);
 
     return 0;
 }
@@ -551,14 +813,7 @@ DF_Store::connection::handle_msg(const char *to)
     }
 
 #if defined(DEBUG)
-    {
-	int index = x_in.index;
-	char *s = NULL;
-
-	ei_s_print_term(&s, x_in.buff, &index);
-	click_chatter("Msg-In: %d, %s\n", index, s);
-	free(s);
-    }
+    click_chatter("Msg-In: %s\n", unparse(x_in).c_str());
 #endif
 
     if (ei_decode_tuple_header(x_in.buff, &x_in.index, &arity) < 0
