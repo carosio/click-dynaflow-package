@@ -242,9 +242,11 @@ String DF_Store::NATTranslation::unparse() const
     return sa.take_string();
 }
 
-DF_Store::connection::connection(int fd_, ErlConnect *conp_)
+DF_Store::connection::connection(int fd_, ErlConnect *conp_,
+				 ClientTable &clients_, GroupTable &groups_)
     : fd(fd_), in_closed(false), out_closed(false),
-      conp(*conp_) {
+      conp(*conp_),
+      clients(clients_), groups(groups_) {
 
     /* prealloc enough space to hold a full CAPWAP PDU plus Erlang encoded meta data */
     ei_x_new_size(&x_in, 2048);
@@ -325,7 +327,7 @@ DF_Store::connection::ei_decode_binary_string(String &str)
 
 // rule sample: {{{10, 0, 1, 0}, 24}, "Class 1"}
 int
-DF_Store::connection::ei_decode_group(GroupTable &groups)
+DF_Store::connection::ei_decode_group()
 {
     int arity;
     unsigned long prefix_len;
@@ -349,7 +351,7 @@ DF_Store::connection::ei_decode_group(GroupTable &groups)
 
 // rules sample: [{{{10, 0, 1, 0}, 24}, "Class 1"}, {{{10, 0, 2, 0}, 24}, "Class 2"}],
 int
-DF_Store::connection::ei_decode_groups(GroupTable &groups)
+DF_Store::connection::ei_decode_groups()
 {
     int arity;
 
@@ -381,7 +383,7 @@ DF_Store::connection::ei_decode_groups(GroupTable &groups)
 	    break;
 	}
 
-	if (ei_decode_group(groups) != 0)
+	if (ei_decode_group() != 0)
 	    return -1;
     } while (arity-- > 0);
 
@@ -631,7 +633,7 @@ DF_Store::connection::ei_decode_client_value(ClientValue &value)
 
 // client sample {{inet,<<172,20,48,19>>}, {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}}
 int
-DF_Store::connection::ei_decode_client(ClientTable &clients)
+DF_Store::connection::ei_decode_client()
 {
     int arity;
     ClientKey key;
@@ -652,7 +654,7 @@ DF_Store::connection::ei_decode_client(ClientTable &clients)
 }
 
 int
-DF_Store::connection::ei_decode_clients(ClientTable &clients)
+DF_Store::connection::ei_decode_clients()
 {
     int arity;
 
@@ -682,7 +684,7 @@ DF_Store::connection::ei_decode_clients(ClientTable &clients)
 	    break;
 	}
 
-	if (ei_decode_client(clients) != 0)
+	if (ei_decode_client() != 0)
 	    return -1;
     } while (arity-- > 0);
 
@@ -704,20 +706,37 @@ DF_Store::connection::erl_bind(int arity)
 void
 DF_Store::connection::erl_init(int arity)
 {
-    GroupTable groups;
-    ClientTable clients;
-
     click_chatter("erl_init: %d\n", arity);
     if (arity != 3) {
 	ei_x_encode_atom(&x_out, "badarg");
 	return;
     }
 
-    if (ei_decode_groups(groups) != 0
-	|| ei_decode_clients(clients) != 0) {
+    if (ei_decode_groups() != 0
+	|| ei_decode_clients() != 0) {
 	ei_x_encode_atom(&x_out, "badarg");
 	return;
     }
+
+    ei_x_encode_atom(&x_out, "ok");
+}
+
+void
+DF_Store::connection::erl_insert(int arity)
+{
+    ClientKey key;
+    ClientValue value;
+    ClientTable clients;
+
+    click_chatter("erl_insert: %d\n", arity);
+    if (arity != 3
+	|| ei_decode_client_key(key) != 0
+	|| ei_decode_client_value(value) != 0) {
+	ei_x_encode_atom(&x_out, "badarg");
+	return;
+    }
+
+    clients.insert(key, value);
 
     ei_x_encode_atom(&x_out, "ok");
 }
@@ -732,6 +751,9 @@ DF_Store::connection::handle_gen_call_click(const char *fn, int arity)
     }
     if (strncmp(fn, "init", 4) == 0) {
 	erl_init(arity);
+    }
+    if (strncmp(fn, "insert", 6) == 0) {
+	erl_insert(arity);
     }
     else
 	ei_x_encode_atom(&x_out, "error");
@@ -872,7 +894,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp);
+    _conns[fd] = new connection(fd, conp, clients, groups);
 }
 
 void

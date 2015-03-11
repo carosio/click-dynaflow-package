@@ -44,6 +44,7 @@ public:
     };
 
     typedef Vector<group *> GroupTable;
+    GroupTable groups;
 
     struct NATTranslation {
 	static const char *Translations[];
@@ -107,6 +108,7 @@ public:
     };
 
     typedef HashMap<ClientKey, ClientValue> ClientTable;
+    ClientTable clients;
 
 private:
     struct connection {
@@ -119,7 +121,10 @@ private:
 	ei_x_buff x_in;
 	ei_x_buff x_out;
 
-        connection(int fd_, ErlConnect *conp_);
+	ClientTable &clients;
+	GroupTable &groups;
+
+        connection(int fd_, ErlConnect *conp_, ClientTable &clients_, GroupTable &groups_);
         ~connection();
         void read();
 
@@ -129,8 +134,8 @@ private:
 	int ei_decode_string(String &str);
 	int ei_decode_binary_string(String &str);
 
-	int ei_decode_group(GroupTable &groups);
-	int ei_decode_groups(GroupTable &groups);
+	int ei_decode_group();
+	int ei_decode_groups();
 
 	int ei_decode_nat_translation(const char *type_atom, NATTranslation &translation);
 	int ei_decode_nat(NATTable &nat_rules);
@@ -142,12 +147,13 @@ private:
 	int ei_decode_client_key(ClientKey &key);
 	int ei_decode_client_value(ClientValue &value);
 
-	int ei_decode_client(ClientTable &clients);
-	int ei_decode_clients(ClientTable &clients);
+	int ei_decode_client();
+	int ei_decode_clients();
 
 	// Erlang call handler
 	void erl_bind(int arity);
 	void erl_init(int arity);
+	void erl_insert(int arity);
 
 	// Erlang generic call handler
 	void handle_gen_call_click(const char *fn, int arity);
