@@ -96,6 +96,7 @@ public:
 
     void selected(int fd, int mask);
 
+    int lookup_group(const String name) const;
     int lookup_group_ip(uint32_t addr) const;
 
 private:

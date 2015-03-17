@@ -24,5 +24,42 @@ public:
     // TODO: add HashContainer support for finding groups by name
 };
 
+
+/*
+ * =c
+ *
+ * DF_SetGroup(STORE, GROUP, ANNO)
+ *
+ * =s ip
+ *
+ * set the DF_Group
+ *
+ * =d
+ *
+ * STORE points to named DF_Store instance to read the group information
+ * from.
+ */
+
+class DF_Store;
+
+class DF_SetGroup : public Element {
+public:
+    DF_SetGroup() CLICK_COLD;
+    ~DF_SetGroup() CLICK_COLD;
+
+    const char *class_name() const	{ return "DF_SetGroup"; }
+    const char *port_count() const	{ return PORTS_1_1; }
+
+    int configure(Vector<String> &, ErrorHandler *) CLICK_COLD;
+    bool can_live_reconfigure() const   { return true; }
+
+    Packet *simple_action(Packet *);
+
+private:
+    DF_Store *_store;
+    String _group;
+    int _anno;
+};
+
 CLICK_ENDDECLS
 #endif

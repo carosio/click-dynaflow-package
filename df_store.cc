@@ -360,6 +360,19 @@ DF_Store::cleanup(CleanupStage)
 }
 
 int
+DF_Store::lookup_group(const String name) const
+{
+    // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
+    for (DF_GetGroupIP::GroupTable::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
+	if (((*it)->group_name() == name))
+	    return it - ip_groups.begin();
+    }
+
+    // FIXME: we have multiple group vectors, using the vector index as group id is misleading
+    return 0;
+}
+
+int
 DF_Store::lookup_group_ip(uint32_t addr) const
 {
     DF_GetGroupIP::entry *e = NULL;
@@ -375,6 +388,7 @@ DF_Store::lookup_group_ip(uint32_t addr) const
 	}
     }
 
+    // FIXME: we have multiple group vectors, using the vector index as group id is misleading
     return pos;
 }
 
