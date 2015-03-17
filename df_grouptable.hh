@@ -7,16 +7,18 @@
 
 class DF_GetGroupEntry {
 private:
+    int _id;
     String _group_name;
 
 public:
-    DF_GetGroupEntry() {};
+    DF_GetGroupEntry();
     DF_GetGroupEntry(String group_name_) : _group_name(group_name_) {};
-    ~DF_GetGroupEntry() {};
+    ~DF_GetGroupEntry();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
 
+    inline int id() const { return _id; };
     inline String group_name() const { return _group_name; };
 
     inline bool operator==(DF_GetGroupEntry b) { return _group_name == b._group_name; }

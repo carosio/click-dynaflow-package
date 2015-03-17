@@ -7,6 +7,7 @@
 #include "df_grouptable.hh"
 #include "df_grouptable_ip.hh"
 #include "df_grouptable_mac.hh"
+#include "uniqueid.hh"
 
 #include "ei.h"
 
@@ -82,6 +83,9 @@ public:
     void encode_atom(const char *s);
     void encode_atom(const String &s);
 };
+
+// global Id Manager for Groups
+extern IdManager group_ids;
 
 class DF_Store : public Element {
 public:

@@ -206,6 +206,8 @@ void ei_x::encode_atom(const String &s)
     ei_x_encode_atom(&x, s.c_str());
 }
 
+IdManager group_ids;
+
 DF_Store::DF_Store()
     : _listen_fd(-1), cookie("secret"), node_name("click-dp")
 {
