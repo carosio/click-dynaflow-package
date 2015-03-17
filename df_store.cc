@@ -367,10 +367,9 @@ DF_Store::lookup_group(const String name) const
     // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
     for (DF_GetGroupIP::GroupTable::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
 	if (((*it)->group_name() == name))
-	    return it - ip_groups.begin();
+	    return (*it)->id();
     }
 
-    // FIXME: we have multiple group vectors, using the vector index as group id is misleading
     return 0;
 }
 
@@ -378,20 +377,16 @@ int
 DF_Store::lookup_group_ip(uint32_t addr) const
 {
     DF_GetGroupIP::entry *e = NULL;
-    int pos = 0;
 
     // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
     for (DF_GetGroupIP::GroupTable::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
 	if (((*it)->addr() & (*it)->mask()) == (addr & (*it)->mask())) {
-	    if (!e || ntohl(e->mask()) < ntohl((*it)->mask())) {
+	    if (!e || ntohl(e->mask()) < ntohl((*it)->mask()))
 		e = *it;
-		pos = it - ip_groups.begin();
-	    }
 	}
     }
 
-    // FIXME: we have multiple group vectors, using the vector index as group id is misleading
-    return pos;
+    return e ? e->id() : 0;
 }
 
 const char *DF_Store::NATTranslation::Translations[] =
