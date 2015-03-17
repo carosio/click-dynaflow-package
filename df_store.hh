@@ -4,10 +4,29 @@
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include "df_grouptable.hh"
+#include "df_grouptable_ip.hh"
+#include "df_grouptable_mac.hh"
 
 #include "ei.h"
 
 CLICK_DECLS
+
+// bytes 16-23
+
+#define GROUP_SRC_ANNO_OFFSET           16
+#define GROUP_SRC_ANNO_SIZE             4
+#define GROUP_SRC_ANNO(p)               ((p)->anno_u32(GROUP_SRC_ANNO_OFFSET))
+#define SET_GROUP_SRC_ANNO(p, v)        ((p)->set_anno_u32(GROUP_SRC_ANNO_OFFSET, (v)))
+
+#define GROUP_DST_ANNO_OFFSET           20
+#define GROUP_DST_ANNO_SIZE             4
+#define GROUP_DST_ANNO(p)               ((p)->anno_u32(GROUP_DST_ANNO_OFFSET))
+#define SET_GROUP_DST_ANNO(p, v)        ((p)->set_anno_u32(GROUP_DST_ANNO_OFFSET, (v)))
+
+#define GROUP_ANNO_SIZE                 4
+#define GROUP_ANNO(p, offset)           ((p)->anno_u32((offset)))
+#define SET_GROUP_ANNO(p, offset, v)    ((p)->set_anno_u32((offset), (v)))
 
 struct ei_badarg : public std::exception
 {
@@ -77,6 +96,8 @@ public:
 
     void selected(int fd, int mask);
 
+    int lookup_group_ip(uint32_t addr) const;
+
 private:
     int _listen_fd;
     ei_cnode ec;
@@ -85,22 +106,10 @@ private:
     String node_name;
     IPAddress local_ip;
 
+    DF_GetGroupIP::GroupTable ip_groups;
+    DF_GetGroupMAC::GroupTable mac_groups;
+
 public:
-    struct group {
-	IPAddress addr;
-	IPAddress prefix;
-	String group_name;
-
-	group(IPAddress addr_, IPAddress prefix_, String group_name_) :
-	    addr(addr_), prefix(prefix_), group_name(group_name_) {};
-
-	StringAccum& unparse(StringAccum& sa) const;
-	String unparse() const;
-    };
-
-    typedef Vector<group *> GroupTable;
-    GroupTable groups;
-
     struct NATTranslation {
 	static const char *Translations[];
 	enum Type { SymetricAddressKeyed,
@@ -180,10 +189,13 @@ private:
 	ei_x x_out;
 
 	ClientTable &clients;
-	GroupTable &groups;
+	DF_GetGroupMAC::GroupTable &mac_groups;
+	DF_GetGroupIP::GroupTable &ip_groups;
 
         connection(int fd_, ErlConnect *conp_,
-		   ClientTable &clients_, GroupTable &groups_,
+		   ClientTable &clients_,
+		   DF_GetGroupMAC::GroupTable &mac_groups_,
+		   DF_GetGroupIP::GroupTable &ip_groups_,
 		   bool debug = false, bool trace = false);
         void read();
 
@@ -229,12 +241,6 @@ uint32_t DF_Store::ClientKey::hashcode() const
 {
     //FIXME: define hash function
     return 0;
-}
-
-inline StringAccum&
-operator<<(StringAccum& sa, const DF_Store::group& group)
-{
-    return group.unparse(sa);
 }
 
 inline StringAccum&

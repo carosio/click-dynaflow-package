@@ -359,17 +359,23 @@ DF_Store::cleanup(CleanupStage)
         }
 }
 
-StringAccum& DF_Store::group::unparse(StringAccum& sa) const
+int
+DF_Store::lookup_group_ip(uint32_t addr) const
 {
-    sa << addr.unparse_with_mask(prefix) << " -> " << group_name;
-    return sa;
-}
+    DF_GetGroupIP::entry *e = NULL;
+    int pos = 0;
 
-String DF_Store::group::unparse() const
-{
-    StringAccum sa;
-    sa << *this;
-    return sa.take_string();
+    // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
+    for (DF_GetGroupIP::GroupTable::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
+	if (((*it)->addr() & (*it)->mask()) == (addr & (*it)->mask())) {
+	    if (!e || ntohl(e->mask()) < ntohl((*it)->mask())) {
+		e = *it;
+		pos = it - ip_groups.begin();
+	    }
+	}
+    }
+
+    return pos;
 }
 
 const char *DF_Store::NATTranslation::Translations[] =
@@ -414,12 +420,14 @@ String DF_Store::NATTranslation::unparse() const
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
-				 ClientTable &clients_, GroupTable &groups_,
+				 ClientTable &clients_,
+				 DF_GetGroupMAC::GroupTable &mac_groups_,
+				 DF_GetGroupIP::GroupTable &ip_groups_,
 				 bool debug_, bool trace_)
     : debug(debug_), trace(trace_), fd(fd_),
       in_closed(false), out_closed(false),
       conp(*conp_), x_in(2048), x_out(2048),
-      clients(clients_), groups(groups_)
+      clients(clients_), mac_groups(mac_groups_), ip_groups(ip_groups_)
 {
 }
 
@@ -457,10 +465,10 @@ DF_Store::connection::decode_group()
     prefix_len = x_in.decode_ulong();
     group_name = x_in.decode_string();
 
-    group *grp = new group(addr, IPAddress::make_prefix(prefix_len), group_name);
+    DF_GetGroupIP::entry *grp = new DF_GetGroupIP::entry(addr, IPAddress::make_prefix(prefix_len), group_name);
     if (trace)
 	click_chatter("decode_group: %s\n", grp->unparse().c_str());
-    groups.push_back(grp);
+    ip_groups.push_back(grp);
 }
 
 // rules sample: [{{{10, 0, 1, 0}, 24}, "Class 1"}, {{{10, 0, 2, 0}, 24}, "Class 2"}],
@@ -900,7 +908,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp, clients, groups, true);
+    _conns[fd] = new connection(fd, conp, clients, mac_groups, ip_groups, true);
 }
 
 void
