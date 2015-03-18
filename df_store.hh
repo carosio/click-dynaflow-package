@@ -111,6 +111,7 @@ private:
     String node_name;
     IPAddress local_ip;
 
+    GroupTable groups;
     GroupTableIP ip_groups;
     GroupTableMAC mac_groups;
 
@@ -194,11 +195,13 @@ private:
 	ei_x x_out;
 
 	ClientTable &clients;
+	GroupTable &groups;
 	GroupTableMAC &mac_groups;
 	GroupTableIP &ip_groups;
 
         connection(int fd_, ErlConnect *conp_,
 		   ClientTable &clients_,
+		   GroupTable &groups_,
 		   GroupTableMAC &mac_groups_,
 		   GroupTableIP &ip_groups_,
 		   bool debug = false, bool trace = false);

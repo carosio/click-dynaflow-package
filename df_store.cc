@@ -365,7 +365,7 @@ int
 DF_Store::lookup_group(const String name) const
 {
     // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
-    for (GroupTableIP::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
+    for (GroupTable::const_iterator it = groups.begin(); it != groups.end(); ++it) {
 	if (((*it)->group_name() == name))
 	    return (*it)->id();
     }
@@ -432,13 +432,15 @@ String DF_Store::NATTranslation::unparse() const
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
 				 ClientTable &clients_,
+				 GroupTable &groups_,
 				 GroupTableMAC &mac_groups_,
 				 GroupTableIP &ip_groups_,
 				 bool debug_, bool trace_)
     : debug(debug_), trace(trace_), fd(fd_),
       in_closed(false), out_closed(false),
       conp(*conp_), x_in(2048), x_out(2048),
-      clients(clients_), mac_groups(mac_groups_), ip_groups(ip_groups_)
+      clients(clients_),
+      groups(groups_), mac_groups(mac_groups_), ip_groups(ip_groups_)
 {
 }
 
@@ -479,6 +481,7 @@ DF_Store::connection::decode_group()
     DF_GroupEntryIP *grp = new DF_GroupEntryIP(addr, IPAddress::make_prefix(prefix_len), group_name);
     if (trace)
 	click_chatter("decode_group: %s\n", grp->unparse().c_str());
+    groups.push_back(grp);
     ip_groups.push_back(grp);
 }
 
@@ -919,7 +922,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp, clients, mac_groups, ip_groups, true);
+    _conns[fd] = new connection(fd, conp, clients, groups, mac_groups, ip_groups, true);
 }
 
 void

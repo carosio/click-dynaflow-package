@@ -26,6 +26,7 @@ public:
     // TODO: add HashContainer support for finding groups by name
 };
 
+typedef Vector<DF_GroupEntry *> GroupTable;
 
 /*
  * =c
