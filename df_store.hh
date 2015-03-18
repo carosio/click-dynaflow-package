@@ -14,7 +14,7 @@
 
 CLICK_DECLS
 
-// bytes 16-27
+// bytes 16-32
 
 #define GROUP_SRC_ANNO_OFFSET           16
 #define GROUP_SRC_ANNO_SIZE             4
@@ -34,6 +34,16 @@ CLICK_DECLS
 #define CLIENT_ANNO_SIZE                4
 #define CLIENT_ANNO(p)                  ((p)->anno_u32(CLIENT_ANNO_OFFSET))
 #define SET_CLIENT_ANNO(p, v)           ((p)->set_anno_u32(CLIENT_ANNO_OFFSET, (v)))
+
+#define FLOW_ANNO_OFFSET                28
+#define FLOW_ANNO_SIZE                  4
+#define FLOW_ANNO(p)                    ((p)->anno_u32(FLOW_ANNO_OFFSET))
+#define SET_FLOW_ANNO(p, v)             ((p)->set_anno_u32(FLOW_ANNO_OFFSET, (v)))
+
+#define ACTION_ANNO_OFFSET              32
+#define ACTION_ANNO_SIZE                1
+#define ACTION_ANNO(p)                  ((p)->anno_u8(ACTION_ANNO_OFFSET))
+#define SET_ACTION_ANNO(p, v)           ((p)->set_anno_u8(ACTION_ANNO_OFFSET, (v)))
 
 struct ei_badarg : public std::exception
 {
