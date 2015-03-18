@@ -32,25 +32,24 @@
 
 class DF_Store;
 
+class DF_GroupEntryMAC: public DF_GroupEntry {
+public:
+    DF_GroupEntryMAC(IPAddress addr_, IPAddress prefix_, String group_name_) :
+	DF_GroupEntry(group_name_), addr(addr_), prefix(prefix_) {};
+    ~DF_GroupEntryMAC() {};
+
+    StringAccum& unparse(StringAccum& sa) const;
+    String unparse() const;
+
+private:
+    IPAddress addr;
+    IPAddress prefix;
+};
+
+typedef Vector<DF_GroupEntryMAC *> GroupTableMAC;
+
 class DF_GetGroupMAC : public Element {
 public:
-
-    class entry: public DF_GetGroupEntry {
-    public:
-	entry(IPAddress addr_, IPAddress prefix_, String group_name_) :
-	    DF_GetGroupEntry(group_name_), addr(addr_), prefix(prefix_) {};
-	~entry() {};
-
-	StringAccum& unparse(StringAccum& sa) const;
-	String unparse() const;
-
-    private:
-	IPAddress addr;
-	IPAddress prefix;
-    };
-
-    typedef Vector<entry *> GroupTable;
-
     DF_GetGroupMAC() CLICK_COLD;
     ~DF_GetGroupMAC() CLICK_COLD;
 
@@ -71,7 +70,7 @@ private:
 };
 
 inline StringAccum&
-operator<<(StringAccum& sa, const DF_GetGroupMAC::entry& entry)
+operator<<(StringAccum& sa, const DF_GroupEntryMAC& entry)
 {
     return entry.unparse(sa);
 }

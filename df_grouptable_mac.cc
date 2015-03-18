@@ -79,7 +79,7 @@ DF_GetGroupMAC::simple_action(Packet *p)
     return p;
 }
 
-StringAccum& DF_GetGroupMAC::entry::unparse(StringAccum& sa) const
+StringAccum& DF_GroupEntryMAC::unparse(StringAccum& sa) const
 {
     sa << addr.unparse_with_mask(prefix) << " -> " << group_name();
     return sa;

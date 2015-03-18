@@ -5,15 +5,15 @@
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
 
-class DF_GetGroupEntry {
+class DF_GroupEntry {
 private:
     int _id;
     String _group_name;
 
 public:
-    DF_GetGroupEntry();
-    DF_GetGroupEntry(String group_name_) : _group_name(group_name_) {};
-    ~DF_GetGroupEntry();
+    DF_GroupEntry();
+    DF_GroupEntry(String group_name_) : _group_name(group_name_) {};
+    ~DF_GroupEntry();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
@@ -21,7 +21,7 @@ public:
     inline int id() const { return _id; };
     inline String group_name() const { return _group_name; };
 
-    inline bool operator==(DF_GetGroupEntry b) { return _group_name == b._group_name; }
+    inline bool operator==(DF_GroupEntry b) { return _group_name == b._group_name; }
 
     // TODO: add HashContainer support for finding groups by name
 };

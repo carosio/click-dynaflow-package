@@ -35,28 +35,27 @@
 
 class DF_Store;
 
+class DF_GroupEntryIP: public DF_GroupEntry {
+public:
+    DF_GroupEntryIP(IPAddress addr_, IPAddress prefix_, String group_name_) :
+	DF_GroupEntry(group_name_), _addr(addr_), _prefix(prefix_) {};
+    ~DF_GroupEntryIP() {};
+
+    inline uint32_t addr() const { return _addr; };
+    inline uint32_t mask() const { return _prefix; };
+
+    StringAccum& unparse(StringAccum& sa) const;
+    String unparse() const;
+
+private:
+    IPAddress _addr;
+    IPAddress _prefix;
+};
+
+typedef Vector<DF_GroupEntryIP *> GroupTableIP;
+
 class DF_GetGroupIP : public Element {
 public:
-
-    class entry: public DF_GetGroupEntry {
-    public:
-	entry(IPAddress addr_, IPAddress prefix_, String group_name_) :
-	    DF_GetGroupEntry(group_name_), _addr(addr_), _prefix(prefix_) {};
-	~entry() {};
-
-	inline uint32_t addr() const { return _addr; };
-	inline uint32_t mask() const { return _prefix; };
-
-	StringAccum& unparse(StringAccum& sa) const;
-	String unparse() const;
-
-    private:
-	IPAddress _addr;
-	IPAddress _prefix;
-    };
-
-    typedef Vector<entry *> GroupTable;
-
     DF_GetGroupIP() CLICK_COLD;
     ~DF_GetGroupIP() CLICK_COLD;
 
@@ -82,7 +81,7 @@ private:
 };
 
 inline StringAccum&
-operator<<(StringAccum& sa, const DF_GetGroupIP::entry& entry)
+operator<<(StringAccum& sa, const DF_GroupEntryIP& entry)
 {
     return entry.unparse(sa);
 }

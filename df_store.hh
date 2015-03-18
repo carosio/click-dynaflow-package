@@ -111,8 +111,8 @@ private:
     String node_name;
     IPAddress local_ip;
 
-    DF_GetGroupIP::GroupTable ip_groups;
-    DF_GetGroupMAC::GroupTable mac_groups;
+    GroupTableIP ip_groups;
+    GroupTableMAC mac_groups;
 
 public:
     struct NATTranslation {
@@ -194,13 +194,13 @@ private:
 	ei_x x_out;
 
 	ClientTable &clients;
-	DF_GetGroupMAC::GroupTable &mac_groups;
-	DF_GetGroupIP::GroupTable &ip_groups;
+	GroupTableMAC &mac_groups;
+	GroupTableIP &ip_groups;
 
         connection(int fd_, ErlConnect *conp_,
 		   ClientTable &clients_,
-		   DF_GetGroupMAC::GroupTable &mac_groups_,
-		   DF_GetGroupIP::GroupTable &ip_groups_,
+		   GroupTableMAC &mac_groups_,
+		   GroupTableIP &ip_groups_,
 		   bool debug = false, bool trace = false);
         void read();
 

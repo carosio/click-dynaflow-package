@@ -86,7 +86,7 @@ DF_GetGroupIP::simple_action(Packet *p)
     return p;
 }
 
-StringAccum& DF_GetGroupIP::entry::unparse(StringAccum& sa) const
+StringAccum& DF_GroupEntryIP::unparse(StringAccum& sa) const
 {
     sa << _addr.unparse_with_mask(_prefix) << " -> " << group_name();
     return sa;

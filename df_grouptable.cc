@@ -16,13 +16,13 @@
 
 CLICK_DECLS
 
-DF_GetGroupEntry::DF_GetGroupEntry()
+DF_GroupEntry::DF_GroupEntry()
 {
     _id = group_ids.AllocateId();
     click_chatter("%p{element}: AllocateId: %d\n", this, _id);
 }
 
-DF_GetGroupEntry::~DF_GetGroupEntry()
+DF_GroupEntry::~DF_GroupEntry()
 {
     click_chatter("%p{element}: FreeId: %d\n", this, _id);
     group_ids.FreeId(_id);
