@@ -34,8 +34,8 @@ class DF_Store;
 
 class DF_GroupEntryMAC: public DF_GroupEntry {
 public:
-    DF_GroupEntryMAC(IPAddress addr_, IPAddress prefix_, String group_name_) :
-	DF_GroupEntry(group_name_), addr(addr_), prefix(prefix_) {};
+  DF_GroupEntryMAC(int id, IPAddress addr_, IPAddress prefix_) :
+	DF_GroupEntry(id), addr(addr_), prefix(prefix_) {};
     ~DF_GroupEntryMAC() {};
 
     StringAccum& unparse(StringAccum& sa) const;

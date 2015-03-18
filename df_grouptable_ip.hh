@@ -38,10 +38,10 @@ class DF_Store;
 
 class DF_GroupEntryIP: public DF_GroupEntry {
 public:
-    DF_GroupEntryIP(ClientValue *client) :
-	DF_GroupEntry(client->group), _addr(client->key.addr), _prefix(32), _client(client) {};
-    DF_GroupEntryIP(IPAddress addr_, IPAddress prefix_, String group_name_) :
-	DF_GroupEntry(group_name_), _addr(addr_), _prefix(prefix_), _client(NULL) {};
+    DF_GroupEntryIP(int id, ClientValue *client) :
+	DF_GroupEntry(id), _addr(client->key.addr), _prefix(32), _client(client) {};
+    DF_GroupEntryIP(int id, IPAddress addr_, IPAddress prefix_) :
+	DF_GroupEntry(id), _addr(addr_), _prefix(prefix_), _client(NULL) {};
     ~DF_GroupEntryIP() {};
 
     inline uint32_t addr() const { return _addr; };

@@ -362,7 +362,20 @@ DF_Store::cleanup(CleanupStage)
         }
 }
 
-DF_GroupEntry *
+DF_Group *
+DF_Store::get_group(const String name)
+{
+    DF_Group *grp;
+
+    if (!(grp = lookup_group(name))) {
+	grp = new DF_Group(name);
+	groups.push_back(grp);
+    }
+
+    return grp;
+}
+
+DF_Group *
 DF_Store::lookup_group(const String name) const
 {
     // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
@@ -391,6 +404,7 @@ DF_Store::lookup_group_ip(uint32_t addr) const
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
+				 DF_Store *store_,
 				 ClientTable &clients_,
 				 GroupTable &groups_,
 				 GroupTableMAC &mac_groups_,
@@ -399,7 +413,7 @@ DF_Store::connection::connection(int fd_, ErlConnect *conp_,
     : debug(debug_), trace(trace_), fd(fd_),
       in_closed(false), out_closed(false),
       conp(*conp_), x_in(2048), x_out(2048),
-      clients(clients_),
+      store(store_), clients(clients_),
       groups(groups_), mac_groups(mac_groups_), ip_groups(ip_groups_)
 {
 }
@@ -438,11 +452,11 @@ DF_Store::connection::decode_group()
     prefix_len = x_in.decode_ulong();
     group_name = x_in.decode_string();
 
-    DF_GroupEntryIP *grp = new DF_GroupEntryIP(addr, IPAddress::make_prefix(prefix_len), group_name);
+    DF_Group *grp = store->get_group(group_name);
+    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(grp->id(), addr, IPAddress::make_prefix(prefix_len));
     if (trace)
-	click_chatter("decode_group: %s\n", grp->unparse().c_str());
-    groups.push_back(grp);
-    ip_groups.push_back(grp);
+	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
+    ip_groups.push_back(ip_grp);
 }
 
 // rules sample: [{{{10, 0, 1, 0}, 24}, "Class 1"}, {{{10, 0, 2, 0}, 24}, "Class 2"}],
@@ -672,11 +686,11 @@ DF_Store::connection::decode_client()
 
     clients.insert(key, value);
 
-    DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
+    DF_Group *grp = store->get_group(value->group);
+    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(grp->id(), value);
     if (trace)
 	click_chatter("decode_group: %s\n", grp->unparse().c_str());
-    groups.push_back(grp);
-    ip_groups.push_back(grp);
+    ip_groups.push_back(ip_grp);
 }
 
 void
@@ -747,11 +761,11 @@ DF_Store::connection::erl_insert(int arity)
 
     clients.insert(key, value);
 
-    DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
+    DF_Group *grp = store->get_group(value->group);
+    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(grp->id(), value);
     if (trace)
 	click_chatter("decode_group: %s\n", grp->unparse().c_str());
-    groups.push_back(grp);
-    ip_groups.push_back(grp);
+    ip_groups.push_back(ip_grp);
 
     x_out.encode_atom("ok");
 }
@@ -894,7 +908,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp, clients, groups, mac_groups, ip_groups, true);
+    _conns[fd] = new connection(fd, conp, this, clients, groups, mac_groups, ip_groups, true);
 }
 
 void
