@@ -63,9 +63,10 @@ DF_SetGroup::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_SetGroup::simple_action(Packet *p)
 {
-    int group = _store->lookup_group(_group);
+    DF_GroupEntry *group = _store->lookup_group(_group);
 
-    SET_GROUP_ANNO(p, _anno, group);
+    if (group)
+	SET_GROUP_ANNO(p, _anno, group->id());
 
     return p;
 }

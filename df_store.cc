@@ -1,4 +1,5 @@
 #include <click/config.h>
+#include "df_clients.hh"
 #include "df_store.hh"
 #include "df.hh"
 #include <click/hashallocator.hh>
@@ -361,19 +362,19 @@ DF_Store::cleanup(CleanupStage)
         }
 }
 
-int
+DF_GroupEntry *
 DF_Store::lookup_group(const String name) const
 {
     // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
     for (GroupTable::const_iterator it = groups.begin(); it != groups.end(); ++it) {
 	if (((*it)->group_name() == name))
-	    return (*it)->id();
+	    return *it;
     }
 
-    return 0;
+    return NULL;
 }
 
-int
+DF_GroupEntryIP *
 DF_Store::lookup_group_ip(uint32_t addr) const
 {
     DF_GroupEntryIP *e = NULL;
@@ -386,48 +387,7 @@ DF_Store::lookup_group_ip(uint32_t addr) const
 	}
     }
 
-    return e ? e->id() : 0;
-}
-
-const char *DF_Store::NATTranslation::Translations[] =
-    { "SymetricAddressKeyed",
-      "AddressKeyed",
-      "PortKeyed",
-      "Random",
-      "RandomPersistent",
-      "Masquerade" };
-
-StringAccum& DF_Store::NATTranslation::unparse(StringAccum& sa) const
-{
-    switch (type) {
-    case SymetricAddressKeyed:
-    case AddressKeyed:
-	sa << Translations[type] << ": " << nat_addr;
-	break;
-
-    case PortKeyed:
-	sa << Translations[type] << ": " << nat_addr << '[' << min_port << '-' << max_port << ']';
-	break;
-
-    case Random:
-    case RandomPersistent:
-    case Masquerade:
-	sa << Translations[type];
-	break;
-
-    default:
-	sa << "invalid";
-	break;
-    }
-
-    return sa;
-}
-
-String DF_Store::NATTranslation::unparse() const
-{
-    StringAccum sa;
-    sa << *this;
-    return sa.take_string();
+    return e;
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
@@ -512,7 +472,7 @@ DF_Store::connection::decode_groups()
 }
 
 // Key: {inet,<<172,20,48,19>>}
-DF_Store::ClientKey
+ClientKey
 DF_Store::connection::decode_client_key()
 {
     int type;
@@ -536,10 +496,10 @@ DF_Store::connection::decode_client_key()
 	throw ei_badarg();
 }
 
-DF_Store::NATTranslation
+NATTranslation
 DF_Store::connection::decode_nat_translation(const String type_atom)
 {
-    unsigned int type;
+    int type;
     IPAddress nat_addr;
     long unsigned int min_port = 0;
     long unsigned int max_port = 0;
@@ -547,7 +507,7 @@ DF_Store::connection::decode_nat_translation(const String type_atom)
     if (trace)
 	click_chatter("decode_nat_translation: %s\n", x_in.unparse().c_str());
 
-    for (type = 0; type < sizeof(NATTranslation::Translations) / sizeof(char *); type++)
+    for (type = 0; type < NATTranslation::Translations.size(); type++)
 	if (NATTranslation::Translations[type] ==  type_atom)
 	    break;
 
@@ -597,7 +557,7 @@ DF_Store::connection::decode_nat(NATTable &nat_rules)
     nat_rules.insert(addr, translation);
 }
 
-DF_Store::NATTable
+NATTable
 DF_Store::connection::decode_nat_list()
 {
     NATTable nat_rules;
@@ -651,7 +611,7 @@ DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
     rules.push_back(new ClientRule(src, dst, out));
 }
 
-DF_Store::ClientRuleTable
+ClientRuleTable
 DF_Store::connection::decode_client_rules_list()
 {
     ClientRuleTable rules;
@@ -681,8 +641,8 @@ DF_Store::connection::decode_client_rules_list()
 }
 
 // Value: {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}
-DF_Store::ClientValue
-DF_Store::connection::decode_client_value()
+ClientValue *
+DF_Store::connection::decode_client_value(ClientKey key)
 {
     if (trace)
 	click_chatter("decode_client_value: %s\n", x_in.unparse().c_str());
@@ -694,7 +654,7 @@ DF_Store::connection::decode_client_value()
     NATTable nat_rules = decode_nat_list();
     ClientRuleTable rules = decode_client_rules_list();
 
-    return ClientValue(group, nat_rules, rules);
+    return new ClientValue(key, group, nat_rules, rules);
 }
 
 // client sample {{inet,<<172,20,48,19>>}, {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}}
@@ -708,9 +668,15 @@ DF_Store::connection::decode_client()
 	throw ei_badarg();
 
     ClientKey key = decode_client_key();
-    ClientValue value = decode_client_value();
+    ClientValue *value = decode_client_value(key);
 
     clients.insert(key, value);
+
+    DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
+    if (trace)
+	click_chatter("decode_group: %s\n", grp->unparse().c_str());
+    groups.push_back(grp);
+    ip_groups.push_back(grp);
 }
 
 void
@@ -777,9 +743,15 @@ DF_Store::connection::erl_insert(int arity)
 	throw ei_badarg();
 
     ClientKey key = decode_client_key();
-    ClientValue value = decode_client_value();
+    ClientValue *value = decode_client_value(key);
 
     clients.insert(key, value);
+
+    DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
+    if (trace)
+	click_chatter("decode_group: %s\n", grp->unparse().c_str());
+    groups.push_back(grp);
+    ip_groups.push_back(grp);
 
     x_out.encode_atom("ok");
 }

@@ -4,6 +4,7 @@
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include "df_clients.hh"
 #include "df_grouptable.hh"
 
 /*
@@ -37,12 +38,15 @@ class DF_Store;
 
 class DF_GroupEntryIP: public DF_GroupEntry {
 public:
+    DF_GroupEntryIP(ClientValue *client) :
+	DF_GroupEntry(client->group), _addr(client->key.addr), _prefix(32), _client(client) {};
     DF_GroupEntryIP(IPAddress addr_, IPAddress prefix_, String group_name_) :
-	DF_GroupEntry(group_name_), _addr(addr_), _prefix(prefix_) {};
+	DF_GroupEntry(group_name_), _addr(addr_), _prefix(prefix_), _client(NULL) {};
     ~DF_GroupEntryIP() {};
 
     inline uint32_t addr() const { return _addr; };
     inline uint32_t mask() const { return _prefix; };
+    inline ClientValue *client() const { return _client; };
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
@@ -50,6 +54,7 @@ public:
 private:
     IPAddress _addr;
     IPAddress _prefix;
+    ClientValue *_client;
 };
 
 typedef Vector<DF_GroupEntryIP *> GroupTableIP;
@@ -78,6 +83,7 @@ private:
     DF_Store *_store;
     int _offset;
     int _anno;
+    bool _is_client;
 };
 
 inline StringAccum&

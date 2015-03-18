@@ -4,6 +4,7 @@
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include "df_clients.hh"
 #include "df_grouptable.hh"
 #include "df_grouptable_ip.hh"
 #include "df_grouptable_mac.hh"
@@ -13,7 +14,7 @@
 
 CLICK_DECLS
 
-// bytes 16-23
+// bytes 16-27
 
 #define GROUP_SRC_ANNO_OFFSET           16
 #define GROUP_SRC_ANNO_SIZE             4
@@ -28,6 +29,11 @@ CLICK_DECLS
 #define GROUP_ANNO_SIZE                 4
 #define GROUP_ANNO(p, offset)           ((p)->anno_u32((offset)))
 #define SET_GROUP_ANNO(p, offset, v)    ((p)->set_anno_u32((offset), (v)))
+
+#define CLIENT_ANNO_OFFSET              24
+#define CLIENT_ANNO_SIZE                4
+#define CLIENT_ANNO(p)                  ((p)->anno_u32(CLIENT_ANNO_OFFSET))
+#define SET_CLIENT_ANNO(p, v)           ((p)->set_anno_u32(CLIENT_ANNO_OFFSET, (v)))
 
 struct ei_badarg : public std::exception
 {
@@ -100,8 +106,8 @@ public:
 
     void selected(int fd, int mask);
 
-    int lookup_group(const String name) const;
-    int lookup_group_ip(uint32_t addr) const;
+    DF_GroupEntry *lookup_group(const String name) const;
+    DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
 
 private:
     int _listen_fd;
@@ -116,68 +122,6 @@ private:
     GroupTableMAC mac_groups;
 
 public:
-    struct NATTranslation {
-	static const char *Translations[];
-	enum Type { SymetricAddressKeyed,
-		    AddressKeyed,
-		    PortKeyed,
-		    Random,
-		    RandomPersistent,
-		    Masquerade };
-	unsigned int type;
-	IPAddress nat_addr;
-	int min_port;
-	int max_port;
-
-	inline NATTranslation() { type = min_port = max_port = 0; };
-	NATTranslation(unsigned int type_, IPAddress nat_addr_, int min_port_, int max_port_) :
-	    type(type_), nat_addr(nat_addr_), min_port(min_port_), max_port(max_port_) {};
-	StringAccum& unparse(StringAccum& sa) const;
-	String unparse() const;
-    };
-
-    typedef HashMap<IPAddress, NATTranslation> NATTable;
-
-    struct ClientKey {
-	int type;
-	IPAddress addr;
-
-	inline ClientKey() { type = 0; };
-	ClientKey(int type_, IPAddress addr_) :
-	    type(type_), addr(addr_) {};
-
-        inline bool
-	operator==(DF_Store::ClientKey other)
-	{
-	    return addr == other.addr;
-	};
-
-    public:
-	inline uint32_t hashcode() const;
-    };
-
-    struct ClientRule {
-	String src;
-	String dst;
-	int out;
-
-	ClientRule(String src_, String dst_, int out_) :
-	    src(src_), dst(dst_), out(out_) {};
-    };
-
-    typedef Vector<ClientRule *> ClientRuleTable;
-
-    struct ClientValue {
-	String group;
-	NATTable nat_rules;
-	ClientRuleTable rules;
-
-	inline ClientValue() {};
-	ClientValue(String group_, NATTable nat_rules_, ClientRuleTable rules_) :
-	    group(group_), nat_rules(nat_rules_), rules(rules_) {};
-    };
-
-    typedef HashMap<ClientKey, ClientValue> ClientTable;
     ClientTable clients;
 
 private:
@@ -222,7 +166,7 @@ private:
 	ClientRuleTable decode_client_rules_list();
 
 	ClientKey decode_client_key();
-	ClientValue decode_client_value();
+	ClientValue *decode_client_value(ClientKey key);
 
 	void decode_client();
 	void decode_clients();
@@ -244,18 +188,6 @@ private:
     int initialize_socket_error(ErrorHandler *, const char *, int);
     void initialize_connection(int fd, ErlConnect *conp);
 };
-
-uint32_t DF_Store::ClientKey::hashcode() const
-{
-    //FIXME: define hash function
-    return 0;
-}
-
-inline StringAccum&
-operator<<(StringAccum& sa, const DF_Store::NATTranslation& translation)
-{
-    return translation.unparse(sa);
-}
 
 inline StringAccum&
 operator<<(StringAccum& sa, const ei_x_buff & buf)

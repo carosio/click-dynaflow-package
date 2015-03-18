@@ -1,4 +1,5 @@
 #include <click/config.h>
+#include "df_clients.hh"
 #include "df_store.hh"
 #include "df_grouptable.hh"
 #include "df_grouptable_ip.hh"
@@ -28,12 +29,14 @@ DF_GetGroupIP::configure(Vector<String> &conf, ErrorHandler *errh)
     int new_offset = -1;
     String ip_word;
     String anno;
+    bool is_client;
 
     if (Args(conf, this, errh)
 	.read_mp("STORE", ElementCastArg("DF_Store"), new_store)
 	.read_p("OFFSET", new_offset)
         .read("IP", ip_word)
 	.read_mp("ANNO", anno)
+	.read_p("CLIENT", is_client)
        .complete() < 0)
         return -1;
 
@@ -57,6 +60,7 @@ DF_GetGroupIP::configure(Vector<String> &conf, ErrorHandler *errh)
     _store = new_store;
     _offset = new_offset;
     _anno = new_anno;
+    _is_client = is_client;
     return 0;
 }
 
@@ -74,14 +78,17 @@ DF_GetGroupIP::simple_action(Packet *p)
 
     // lookup group and set anno or whatever....
 
-    int group = _store->lookup_group_ip(ip);
-
+    DF_GroupEntryIP *group = _store->lookup_group_ip(ip);
     if (!group) {
         checked_output_push(1, p);
         return 0;
     }
 
-    SET_GROUP_ANNO(p, _anno, group);
+    ClientValue *client = group->client();
+    if (client && _is_client)
+      SET_CLIENT_ANNO(p, client->id());
+
+    SET_GROUP_ANNO(p, _anno, group->id());
 
     return p;
 }
