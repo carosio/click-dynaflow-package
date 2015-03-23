@@ -1,6 +1,7 @@
 #ifndef DF_FLOW_HH
 #define DF_FLOW_HH
 #include <click/packet.hh>
+#include <click/bighashmap.hh>
 
 CLICK_DECLS
 
@@ -41,6 +42,9 @@ struct Flow {
   private:
     uint32_t _id;
 };
+
+typedef HashMap<uint32_t, Flow *> FlowTable;
+typedef HashMap<uint32_t, uint8_t> FlowActionTable;
 
 CLICK_ENDDECLS
 #endif

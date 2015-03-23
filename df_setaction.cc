@@ -1,4 +1,6 @@
 #include <click/config.h>
+#include <click/args.hh>
+#include "df_setaction.hh"
 #include "df_clients.hh"
 #include "df_store.hh"
 
@@ -31,10 +33,15 @@ DF_SetAction::simple_action(Packet *p)
     uint32_t c_id = CLIENT_ANNO(p);
     uint32_t gs_id = GROUP_SRC_ANNO(p);
     uint32_t gd_id = GROUP_DST_ANNO(p);
-    DF_Client *client = _store->lookup_client(c_id);
+    ClientValue *client = _store->lookup_client(c_id);
 
     ClientRuleTable *cr = &(client->rules);
-    uint8_t action = cr->find(struct ClientRuleGroups(gs_id, gd_is), DF_ACTION_UNKOWN);
+    uint8_t action = 0;
+    for (ClientRuleTable::const_iterator it = cr->begin(); it != cr->end(); ++it) {
+        if (((*it)->src == gs_id) && ((*it)->dst == gd_id)) {
+            action = (*it)->out;
+        }
+    }
 
     SET_ACTION_ANNO(p, action);
 

@@ -43,7 +43,7 @@ public:
 
     inline ClientKey() { type = 0; };
     ClientKey(int type_, IPAddress addr_) :
-	type(type_), addr(addr_) {_id = addr.addr()};
+	type(type_), addr(addr_) { _id = addr.addr(); };
 
     inline bool
     operator==(ClientKey other)
@@ -55,11 +55,11 @@ public:
 };
 
 struct ClientRule {
-    String src;
-    String dst;
-    int out;
+    int src;
+    int dst;
+    uint8_t out;
 
-    ClientRule(String src_, String dst_, int out_) :
+    ClientRule(int src_, int dst_, uint8_t out_) :
 	src(src_), dst(dst_), out(out_) {};
 };
 

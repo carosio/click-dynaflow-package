@@ -8,6 +8,7 @@
 #include "df_grouptable.hh"
 #include "df_grouptable_ip.hh"
 #include "df_grouptable_mac.hh"
+#include "df_flow.hh"
 #include "uniqueid.hh"
 
 #include "ei.h"
@@ -118,6 +119,9 @@ public:
 
     DF_Group *lookup_group(const String name) const;
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
+    uint8_t lookup_flow_action(uint32_t id) const;
+    void set_flow_action(uint32_t id, uint8_t action);
+    ClientValue * lookup_client(uint32_t id_) const;
 
 private:
     int _listen_fd;
@@ -131,7 +135,7 @@ private:
     GroupTableIP ip_groups;
     GroupTableMAC mac_groups;
 
-    FlowTable flows;
+    FlowActionTable flows;
     DF_Group *get_group(const String name);
 
 public:

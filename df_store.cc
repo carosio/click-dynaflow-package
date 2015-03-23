@@ -2,6 +2,7 @@
 #include "df_clients.hh"
 #include "df_store.hh"
 #include "df.hh"
+#include "df_flow.hh"
 #include <click/hashallocator.hh>
 #include <click/error.hh>
 #include <click/confparse.hh>
@@ -406,36 +407,19 @@ DF_Store::lookup_group_ip(uint32_t addr) const
 ClientValue *
 DF_Store::lookup_client(uint32_t id_) const
 {
-    ClientValue *c = NULL;
-
-    ClientTable::iterator it = clients.find(id_);
-    if(it)
-        c = it.get();
-
-    return c;
+    return clients.find(id_);
 }
 
 uint8_t
-DF_Store::lookup_flow(uint32_t id_) const
+DF_Store::lookup_flow_action(uint32_t id_) const
 {
-    uint8_t a = 0; // 0 == unknow action
-
-    FlowTable::iterator it = flows.find(id_);
-    if(it)
-        a = it.get();
-
-    return a;
+    return flows.find(id_);
 }
 
 void
-DF_Store::set_flow(uint32_t id_, uint8_t action_) const
+DF_Store::set_flow_action(uint32_t id_, uint8_t action_)
 {
-    FlowTable::iterator it = flows.find(id_s);
-    if(it) {
-        //overwrite
-    } else {
-        //new
-    }
+    flows.insert(id_, action_);
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
@@ -638,7 +622,9 @@ DF_Store::connection::decode_nat_list()
 void
 DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
 {
-    int out = 0;
+    uint8_t out = 0;
+    int gs_id;
+    int gd_id;
 
     if (trace)
 	click_chatter("decode_client_rules: %s\n", x_in.unparse().c_str());
@@ -651,13 +637,15 @@ DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
     String out_atom = x_in.decode_atom();
 
     if (out_atom == "deny")
-	out = 0;
+	    out = DF_RULE_DENY;
     else if (out_atom ==  "drop")
-	out = 1;
+        out = DF_RULE_DROP;
     else if (out_atom == "accept")
-	out = 2;
+        out = DF_RULE_ACCEPT;
 
-    rules.push_back(new ClientRule(src, dst, out));
+    gs_id = store->get_group(src)->id();
+    gd_id = store->get_group(dst)->id();
+    rules.push_back(new ClientRule(gs_id, gd_id, out));
 }
 
 ClientRuleTable

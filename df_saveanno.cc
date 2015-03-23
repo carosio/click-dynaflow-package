@@ -1,5 +1,7 @@
 #include <click/config.h>
+#include <click/args.hh>
 #include "df_store.hh"
+#include "df_saveanno.hh"
 
 #define DEBUG
 
@@ -29,7 +31,7 @@ DF_SaveAnno::simple_action(Packet *p)
     uint32_t f_id = FLOW_ANNO(p);
     uint8_t action = ACTION_ANNO(p);
 
-    _store->set_flow(f_id, action); // too less info.?
+    _store->set_flow_action(f_id, action); // too less info.?
 
     return p;
 }

@@ -3,6 +3,7 @@
 #include <click/confparse.hh>
 #include <click/args.hh>
 #include "df_pefswitch.hh"
+#include "df_store.hh"
 
 CLICK_DECLS
 
@@ -35,7 +36,7 @@ DF_PEFSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
         } else if(s.lower() == "else") {
             else_port = slot;
         } else {
-            return errh->error("unknown action: %s", s);
+            return errh->error("unknown action: %s", s.c_str());
         }
     }
 
