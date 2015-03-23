@@ -34,12 +34,16 @@ struct NATTranslation {
 typedef HashMap<IPAddress, NATTranslation> NATTable;
 
 struct ClientKey {
+private:
+    uint32_t _id;
+
+public:
     int type;
     IPAddress addr;
 
     inline ClientKey() { type = 0; };
     ClientKey(int type_, IPAddress addr_) :
-	type(type_), addr(addr_) {};
+	type(type_), addr(addr_) {_id = addr.addr()};
 
     inline bool
     operator==(ClientKey other)
@@ -47,7 +51,6 @@ struct ClientKey {
 	return addr == other.addr;
     };
 
-public:
     inline uint32_t hashcode() const;
 };
 
@@ -64,7 +67,7 @@ typedef Vector<ClientRule *> ClientRuleTable;
 
 struct ClientValue {
 private:
-    int _id;
+    int _id; // ?
 
 public:
     ClientKey key;
@@ -82,12 +85,13 @@ public:
     inline int id() const { return _id; };
 };
 
-typedef HashMap<ClientKey, ClientValue *> ClientTable;
+typedef HashMap<uint32_t, ClientValue *> ClientTable;
 
 uint32_t ClientKey::hashcode() const
 {
     //FIXME: define hash function
-    return 0;
+    //return 0;
+    return _id;
 }
 
 inline StringAccum&

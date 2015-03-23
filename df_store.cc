@@ -390,6 +390,41 @@ DF_Store::lookup_group_ip(uint32_t addr) const
     return e;
 }
 
+ClientValue *
+DF_Store::lookup_client(uint32_t id_) const
+{
+    ClientValue *c = NULL;
+
+    ClientTable::iterator it = clients.find(id_);
+    if(it)
+        c = it.get();
+
+    return c;
+}
+
+uint8_t
+DF_Store::lookup_flow(uint32_t id_) const
+{
+    uint8_t a = 0; // 0 == unknow action
+
+    FlowTable::iterator it = flows.find(id_);
+    if(it)
+        a = it.get();
+
+    return a;
+}
+
+void
+DF_Store::set_flow(uint32_t id_, uint8_t action_) const
+{
+    FlowTable::iterator it = flows.find(id_s);
+    if(it) {
+        //overwrite
+    } else {
+        //new
+    }
+}
+
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
 				 ClientTable &clients_,
 				 GroupTable &groups_,
@@ -670,7 +705,7 @@ DF_Store::connection::decode_client()
     ClientKey key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
-    clients.insert(key, value);
+    clients.insert(key.hashcode(), value);
 
     DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
     if (trace)
@@ -745,7 +780,7 @@ DF_Store::connection::erl_insert(int arity)
     ClientKey key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
-    clients.insert(key, value);
+    clients.insert(key.hashcode(), value);
 
     DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
     if (trace)

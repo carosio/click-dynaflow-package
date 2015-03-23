@@ -131,6 +131,8 @@ private:
     GroupTableIP ip_groups;
     GroupTableMAC mac_groups;
 
+    FlowTable flows;
+
 public:
     ClientTable clients;
 
