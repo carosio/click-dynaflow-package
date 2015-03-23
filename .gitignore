@@ -3,6 +3,8 @@
 *.u.d
 *.u.o
 
+dynaflow-*
+
 #
 # autoconf stuff
 #
