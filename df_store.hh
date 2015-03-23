@@ -116,7 +116,7 @@ public:
 
     void selected(int fd, int mask);
 
-    DF_GroupEntry *lookup_group(const String name) const;
+    DF_Group *lookup_group(const String name) const;
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
 
 private:
@@ -132,6 +132,7 @@ private:
     GroupTableMAC mac_groups;
 
     FlowTable flows;
+    DF_Group *get_group(const String name);
 
 public:
     ClientTable clients;
@@ -150,12 +151,15 @@ private:
 	ei_x x_in;
 	ei_x x_out;
 
+	DF_Store *store;
+
 	ClientTable &clients;
 	GroupTable &groups;
 	GroupTableMAC &mac_groups;
 	GroupTableIP &ip_groups;
 
         connection(int fd_, ErlConnect *conp_,
+		   DF_Store *store_,
 		   ClientTable &clients_,
 		   GroupTable &groups_,
 		   GroupTableMAC &mac_groups_,

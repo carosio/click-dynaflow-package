@@ -81,7 +81,7 @@ DF_GetGroupMAC::simple_action(Packet *p)
 
 StringAccum& DF_GroupEntryMAC::unparse(StringAccum& sa) const
 {
-    sa << addr.unparse_with_mask(prefix) << " -> " << group_name();
+    sa << addr.unparse_with_mask(prefix) << " -> " << id();
     return sa;
 }
 

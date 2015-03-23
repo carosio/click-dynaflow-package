@@ -16,13 +16,13 @@
 
 CLICK_DECLS
 
-DF_GroupEntry::DF_GroupEntry()
+DF_Group::DF_Group()
 {
     _id = group_ids.AllocateId();
     click_chatter("%p{element}: AllocateId: %d\n", this, _id);
 }
 
-DF_GroupEntry::~DF_GroupEntry()
+DF_Group::~DF_Group()
 {
     click_chatter("%p{element}: FreeId: %d\n", this, _id);
     group_ids.FreeId(_id);
@@ -63,7 +63,7 @@ DF_SetGroup::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_SetGroup::simple_action(Packet *p)
 {
-    DF_GroupEntry *group = _store->lookup_group(_group);
+    DF_Group *group = _store->lookup_group(_group);
 
     if (group)
 	SET_GROUP_ANNO(p, _anno, group->id());
