@@ -2,6 +2,7 @@
 #include <click/args.hh>
 #include "df_store.hh"
 #include "df_saveanno.hh"
+#include "df.hh"
 
 #define DEBUG
 
@@ -29,7 +30,7 @@ Packet *
 DF_SaveAnno::simple_action(Packet *p)
 {
     uint32_t f_id = FLOW_ANNO(p);
-    uint8_t action = ACTION_ANNO(p);
+    DF_RuleAction action = static_cast<DF_RuleAction>(ACTION_ANNO(p));
 
     _store->set_flow_action(f_id, action); // too less info.?
 

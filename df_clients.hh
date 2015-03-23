@@ -5,6 +5,7 @@
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
 #include "uniqueid.hh"
+#include "df.hh"
 
 CLICK_DECLS
 
@@ -57,9 +58,9 @@ public:
 struct ClientRule {
     int src;
     int dst;
-    uint8_t out;
+    DF_RuleAction out;
 
-    ClientRule(int src_, int dst_, uint8_t out_) :
+    ClientRule(int src_, int dst_, DF_RuleAction out_) :
 	src(src_), dst(dst_), out(out_) {};
 };
 

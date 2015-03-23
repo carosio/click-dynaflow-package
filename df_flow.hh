@@ -2,20 +2,9 @@
 #define DF_FLOW_HH
 #include <click/packet.hh>
 #include <click/bighashmap.hh>
+#include "df.hh"
 
 CLICK_DECLS
-
-enum Rule_action {
-    DF_RULE_UNKNOWN, // default for new Flows
-    DF_RULE_NO_ACTION,
-    DF_RULE_ACCEPT,
-    DF_RULE_DENY,
-    DF_RULE_DROP,
-    _DF_RULE_SIZE,
-    DF_RULE_ELSE = 255 // catch all
-};
-
-#define DF_RULE_SIZE (_DF_RULE_SIZE + 1)
 
 struct FlowData {
     uint32_t src_ipv4;
@@ -44,7 +33,7 @@ struct Flow {
 };
 
 typedef HashMap<uint32_t, Flow *> FlowTable;
-typedef HashMap<uint32_t, uint8_t> FlowActionTable;
+typedef HashMap<uint32_t, DF_RuleAction> FlowActionTable;
 
 CLICK_ENDDECLS
 #endif

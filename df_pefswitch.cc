@@ -7,7 +7,10 @@
 
 CLICK_DECLS
 
-DF_PEFSwitch::DF_PEFSwitch() {}
+DF_PEFSwitch::DF_PEFSwitch() {
+    for(int i=0; i < DF_RULE_SIZE; i++)
+        mapping[i] = DF_RULE_ELSE;
+}
 
 DF_PEFSwitch::~DF_PEFSwitch() {}
 

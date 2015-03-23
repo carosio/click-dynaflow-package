@@ -410,14 +410,14 @@ DF_Store::lookup_client(uint32_t id_) const
     return clients.find(id_);
 }
 
-uint8_t
+DF_RuleAction
 DF_Store::lookup_flow_action(uint32_t id_) const
 {
     return flows.find(id_);
 }
 
 void
-DF_Store::set_flow_action(uint32_t id_, uint8_t action_)
+DF_Store::set_flow_action(uint32_t id_, DF_RuleAction action_)
 {
     flows.insert(id_, action_);
 }
@@ -622,7 +622,7 @@ DF_Store::connection::decode_nat_list()
 void
 DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
 {
-    uint8_t out = 0;
+    DF_RuleAction out = DF_RULE_UNKNOWN;
     int gs_id;
     int gd_id;
 

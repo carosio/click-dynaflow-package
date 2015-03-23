@@ -9,42 +9,11 @@
 #include "df_grouptable_ip.hh"
 #include "df_grouptable_mac.hh"
 #include "df_flow.hh"
+#include "df.hh"
 #include "uniqueid.hh"
-
 #include "ei.h"
 
 CLICK_DECLS
-
-// bytes 16-32
-
-#define GROUP_SRC_ANNO_OFFSET           16
-#define GROUP_SRC_ANNO_SIZE             4
-#define GROUP_SRC_ANNO(p)               ((p)->anno_u32(GROUP_SRC_ANNO_OFFSET))
-#define SET_GROUP_SRC_ANNO(p, v)        ((p)->set_anno_u32(GROUP_SRC_ANNO_OFFSET, (v)))
-
-#define GROUP_DST_ANNO_OFFSET           20
-#define GROUP_DST_ANNO_SIZE             4
-#define GROUP_DST_ANNO(p)               ((p)->anno_u32(GROUP_DST_ANNO_OFFSET))
-#define SET_GROUP_DST_ANNO(p, v)        ((p)->set_anno_u32(GROUP_DST_ANNO_OFFSET, (v)))
-
-#define GROUP_ANNO_SIZE                 4
-#define GROUP_ANNO(p, offset)           ((p)->anno_u32((offset)))
-#define SET_GROUP_ANNO(p, offset, v)    ((p)->set_anno_u32((offset), (v)))
-
-#define CLIENT_ANNO_OFFSET              24
-#define CLIENT_ANNO_SIZE                4
-#define CLIENT_ANNO(p)                  ((p)->anno_u32(CLIENT_ANNO_OFFSET))
-#define SET_CLIENT_ANNO(p, v)           ((p)->set_anno_u32(CLIENT_ANNO_OFFSET, (v)))
-
-#define FLOW_ANNO_OFFSET                28
-#define FLOW_ANNO_SIZE                  4
-#define FLOW_ANNO(p)                    ((p)->anno_u32(FLOW_ANNO_OFFSET))
-#define SET_FLOW_ANNO(p, v)             ((p)->set_anno_u32(FLOW_ANNO_OFFSET, (v)))
-
-#define ACTION_ANNO_OFFSET              32
-#define ACTION_ANNO_SIZE                1
-#define ACTION_ANNO(p)                  ((p)->anno_u8(ACTION_ANNO_OFFSET))
-#define SET_ACTION_ANNO(p, v)           ((p)->set_anno_u8(ACTION_ANNO_OFFSET, (v)))
 
 struct ei_badarg : public std::exception
 {
@@ -119,8 +88,8 @@ public:
 
     DF_Group *lookup_group(const String name) const;
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
-    uint8_t lookup_flow_action(uint32_t id) const;
-    void set_flow_action(uint32_t id, uint8_t action);
+    DF_RuleAction lookup_flow_action(uint32_t id) const;
+    void set_flow_action(uint32_t id, DF_RuleAction action);
     ClientValue * lookup_client(uint32_t id_) const;
 
 private:

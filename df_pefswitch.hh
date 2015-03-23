@@ -44,7 +44,7 @@ public:
 
 private:
 
-    uint8_t mapping[DF_RULE_SIZE] = { DF_RULE_ELSE };
+    uint8_t mapping[DF_RULE_SIZE];
 };
 
 CLICK_ENDDECLS
