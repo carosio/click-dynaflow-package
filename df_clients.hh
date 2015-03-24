@@ -57,6 +57,8 @@ public:
 };
 
 struct ClientRule {
+    static const String ActionType[];
+
     uint32_t src;
     uint32_t dst;
     DF_RuleAction out;

@@ -461,12 +461,11 @@ DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
     String dst = x_in.decode_binary_string();
     String out_atom = x_in.decode_atom();
 
-    if (out_atom == "deny")
-	    out = DF_RULE_DENY;
-    else if (out_atom ==  "drop")
-        out = DF_RULE_DROP;
-    else if (out_atom == "accept")
-        out = DF_RULE_ACCEPT;
+    for (int i = 0; i < DF_RULE_SIZE; i++)
+	if (ClientRule::ActionType[i] == out_atom) {
+	    out = (DF_RuleAction)i;
+	    break;
+	}
 
     gs_id = store->get_group(src)->id();
     gd_id = store->get_group(dst)->id();
@@ -505,20 +504,12 @@ DF_Store::connection::decode_client_rules_list()
 void
 DF_Store::connection::encode_client_rules_list(const ClientRuleTable &rules)
 {
-    static const char *df_rules_map[] = {
-	[DF_RULE_UNKNOWN]   = "unknown",
-	[DF_RULE_NO_ACTION] = "no_action",
-	[DF_RULE_ACCEPT]    = "accept",
-	[DF_RULE_DENY]      = "deny",
-	[DF_RULE_DROP]      = "drop"
-    };
-
     for (ClientRuleTable::const_iterator it = rules.begin(); it != rules.end(); ++it) {
 	x_out.encode_list_header(1)
 	    .encode_tuple_header(3)
 	    .encode_long((*it)->src)
 	    .encode_long((*it)->dst)
-	    .encode_atom(df_rules_map[(*it)->out]);
+	    .encode_atom(ClientRule::ActionType[(*it)->out]);
     }
     x_out.encode_empty_list();
 }

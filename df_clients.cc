@@ -21,6 +21,13 @@ const String NATTranslation::Translations[] = {
     "RandomPersistent",
     "Masquerade" };
 
+const String ClientRule::ActionType[] = {
+	[DF_RULE_UNKNOWN]   = "unknown",
+	[DF_RULE_NO_ACTION] = "no_action",
+	[DF_RULE_ACCEPT]    = "accept",
+	[DF_RULE_DENY]      = "deny",
+	[DF_RULE_DROP]      = "drop" };
+
 ClientValue::ClientValue()
 {
     _id = client_ids.AllocateId();
