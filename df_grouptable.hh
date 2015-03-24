@@ -31,8 +31,8 @@ private:
     int _id;
 
 public:
-    DF_GroupEntry(int id_) : _id(id_) {};
-    ~DF_GroupEntry() {};
+    DF_GroupEntry(int id_);
+    virtual ~DF_GroupEntry();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
@@ -45,6 +45,12 @@ public:
 };
 
 typedef Vector<DF_Group *> GroupTable;
+
+inline StringAccum&
+operator<<(StringAccum& sa, const DF_GroupEntry& entry)
+{
+    return entry.unparse(sa);
+}
 
 /*
  * =c

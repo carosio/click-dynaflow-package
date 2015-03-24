@@ -99,5 +99,11 @@ StringAccum& DF_GroupEntryIP::unparse(StringAccum& sa) const
     return sa;
 }
 
+String DF_GroupEntryIP::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DF_GetGroupIP)

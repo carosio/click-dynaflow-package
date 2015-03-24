@@ -85,5 +85,12 @@ StringAccum& DF_GroupEntryMAC::unparse(StringAccum& sa) const
     return sa;
 }
 
+String DF_GroupEntryMAC::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DF_GetGroupMAC)

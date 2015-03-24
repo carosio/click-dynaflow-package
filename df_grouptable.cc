@@ -16,6 +16,27 @@
 
 CLICK_DECLS
 
+DF_GroupEntry::DF_GroupEntry(int id_) : _id(id_)
+{
+}
+
+DF_GroupEntry::~DF_GroupEntry()
+{
+}
+
+StringAccum& DF_GroupEntry::unparse(StringAccum& sa) const
+{
+    sa << " -> " << id();
+    return sa;
+}
+
+String DF_GroupEntry::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
+
 DF_Group::DF_Group()
 {
     _id = group_ids.AllocateId();
