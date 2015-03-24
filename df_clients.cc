@@ -67,3 +67,4 @@ String NATTranslation::unparse() const
 }
 
 CLICK_ENDDECLS
+ELEMENT_PROVIDES(NATTranslation)

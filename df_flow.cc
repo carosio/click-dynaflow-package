@@ -24,3 +24,4 @@ Flow::hash() {
 }
 
 CLICK_ENDDECLS
+ELEMENT_PROVIDES(Flow)
