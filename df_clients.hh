@@ -13,13 +13,14 @@ CLICK_DECLS
 extern IdManager client_ids;
 
 struct NATTranslation {
-    static const Vector<String> Translations;
+    static const String Translations[];
     enum Type { SymetricAddressKeyed,
 		AddressKeyed,
 		PortKeyed,
 		Random,
 		RandomPersistent,
-		Masquerade };
+		Masquerade,
+		LastEntry = Masquerade};
     unsigned int type;
     IPAddress nat_addr;
     int min_port;

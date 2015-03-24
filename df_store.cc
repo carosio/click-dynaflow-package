@@ -540,7 +540,7 @@ DF_Store::connection::decode_nat_translation(const String type_atom)
     if (trace)
 	click_chatter("decode_nat_translation: %s\n", x_in.unparse().c_str());
 
-    for (type = 0; type < NATTranslation::Translations.size(); type++)
+    for (type = 0; type < NATTranslation::LastEntry + 1; type++)
 	if (NATTranslation::Translations[type] ==  type_atom)
 	    break;
 

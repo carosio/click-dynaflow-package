@@ -13,13 +13,13 @@ CLICK_DECLS
 
 IdManager client_ids;
 
-const Vector<String> NATTranslation::Translations({
+const String NATTranslation::Translations[] = {
     "SymetricAddressKeyed",
     "AddressKeyed",
     "PortKeyed",
     "Random",
     "RandomPersistent",
-    "Masquerade" });
+    "Masquerade" };
 
 ClientValue::ClientValue()
 {
