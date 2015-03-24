@@ -13,7 +13,7 @@ private:
 public:
     DF_Group();
     DF_Group(String group_name_) : _group_name(group_name_) {};
-    ~DF_Group();
+    virtual ~DF_Group();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
@@ -25,6 +25,12 @@ public:
 
     // TODO: add HashContainer support for finding groups by name
 };
+
+inline StringAccum&
+operator<<(StringAccum& sa, const DF_Group& group)
+{
+    return group.unparse(sa);
+}
 
 class DF_GroupEntry {
 private:

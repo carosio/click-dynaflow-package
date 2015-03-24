@@ -49,6 +49,19 @@ DF_Group::~DF_Group()
     group_ids.FreeId(_id);
 }
 
+StringAccum& DF_Group::unparse(StringAccum& sa) const
+{
+    sa << id() << ": " << group_name();
+    return sa;
+}
+
+String DF_Group::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
+
 DF_SetGroup::DF_SetGroup() {}
 
 DF_SetGroup::~DF_SetGroup() {}
