@@ -16,7 +16,7 @@
 
 CLICK_DECLS
 
-DF_GroupEntry::DF_GroupEntry(int id_) : _id(id_)
+DF_GroupEntry::DF_GroupEntry(uint32_t id_) : _id(id_)
 {
 }
 

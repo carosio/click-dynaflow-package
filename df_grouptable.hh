@@ -7,7 +7,7 @@
 
 class DF_Group {
 private:
-    int _id;
+    uint32_t _id;
     String _group_name;
 
 public:
@@ -18,13 +18,15 @@ public:
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
 
-    inline int id() const { return _id; };
+    inline uint32_t id() const { return _id; };
     inline String group_name() const { return _group_name; };
 
     inline bool operator==(DF_Group b) { return _group_name == b._group_name; }
 
     // TODO: add HashContainer support for finding groups by name
 };
+
+typedef Vector<DF_Group *> GroupTable;
 
 inline StringAccum&
 operator<<(StringAccum& sa, const DF_Group& group)
@@ -34,23 +36,21 @@ operator<<(StringAccum& sa, const DF_Group& group)
 
 class DF_GroupEntry {
 private:
-    int _id;
+    uint32_t _id;
 
 public:
-    DF_GroupEntry(int id_);
+    DF_GroupEntry(uint32_t id_);
     virtual ~DF_GroupEntry();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
 
-    inline int id() const { return _id; };
+    inline uint32_t id() const { return _id; };
 
     inline bool operator==(DF_GroupEntry b) { return _id == b._id; }
 
     // TODO: add HashContainer support for finding groups by name
 };
-
-typedef Vector<DF_Group *> GroupTable;
 
 inline StringAccum&
 operator<<(StringAccum& sa, const DF_GroupEntry& entry)

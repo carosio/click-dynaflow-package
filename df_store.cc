@@ -623,8 +623,8 @@ void
 DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
 {
     DF_RuleAction out = DF_RULE_UNKNOWN;
-    int gs_id;
-    int gd_id;
+    uint32_t gs_id;
+    uint32_t gd_id;
 
     if (trace)
 	click_chatter("decode_client_rules: %s\n", x_in.unparse().c_str());

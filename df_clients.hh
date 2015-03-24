@@ -57,8 +57,8 @@ public:
 };
 
 struct ClientRule {
-    int src;
-    int dst;
+    uint32_t src;
+    uint32_t dst;
     DF_RuleAction out;
 
     ClientRule(int src_, int dst_, DF_RuleAction out_) :

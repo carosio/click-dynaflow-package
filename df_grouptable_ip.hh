@@ -39,13 +39,14 @@ class DF_Store;
 class DF_GroupEntryIP: public DF_GroupEntry {
 public:
     DF_GroupEntryIP(int id, ClientValue *client) :
-	DF_GroupEntry(id), _addr(client->key.addr), _prefix(32), _client(client) {};
+	DF_GroupEntry(id), _addr(client->key.addr), _prefix(IPAddress::make_prefix(32)), _client(client) {};
     DF_GroupEntryIP(int id, IPAddress addr_, IPAddress prefix_) :
 	DF_GroupEntry(id), _addr(addr_), _prefix(prefix_), _client(NULL) {};
     ~DF_GroupEntryIP() {};
 
     inline uint32_t addr() const { return _addr; };
     inline uint32_t mask() const { return _prefix; };
+    inline uint32_t prefix_len() const { return _prefix.mask_to_prefix_len(); };
     inline ClientValue *client() const { return _client; };
 
     StringAccum& unparse(StringAccum& sa) const;

@@ -31,8 +31,8 @@ DF_SetAction::simple_action(Packet *p)
 {
 
     uint32_t c_id = CLIENT_ANNO(p);
-    int gs_id = GROUP_SRC_ANNO(p);
-    int gd_id = GROUP_DST_ANNO(p);
+    uint32_t gs_id = GROUP_SRC_ANNO(p);
+    uint32_t gd_id = GROUP_DST_ANNO(p);
     ClientValue *client = _store->lookup_client(c_id);
 
     ClientRuleTable *cr = &(client->rules);
