@@ -1,8 +1,9 @@
 //http://stackoverflow.com/questions/2620218/fastest-container-or-algorithm-for-unique-reusable-ids-in-c
 
-
+#include <click/config.h>
 #include "uniqueid.hh"
 
+CLICK_DECLS
 
 IdManager::IdManager()
 {
@@ -83,3 +84,6 @@ bool id_interval::operator < (const id_interval& s) const
 	  (value_.lower() < s.value_.lower()) && 
 	  (value_.upper() < s.value_.lower());
 }
+
+CLICK_ENDDECLS
+ELEMENT_PROVIDES(IdManager)

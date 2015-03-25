@@ -11,64 +11,9 @@
 #include "df_flow.hh"
 #include "df.hh"
 #include "uniqueid.hh"
-#include "ei.h"
+#include "ei.hh"
 
 CLICK_DECLS
-
-struct ei_badarg : public std::exception
-{
-    const char * what () const throw () { return "Erlang Bad Argument"; }
-};
-
-class ei_x {
-private:
-    ei_x_buff x;
-
-public:
-    ei_x(long size);
-    ~ei_x();
-
-    inline void reset() { x.index = 0; };
-    inline ei_x_buff *buffer() { return &x; };
-
-    inline String unparse() { return unparse(x.index); }
-    inline String unparse(int index)
-    {
-	char *s = NULL;
-	String r;
-
-	if (index == 0) {
-	    int version;
-	    ei_decode_version(x.buff, &index, &version);
-	}
-	ei_s_print_term(&s, x.buff, &index);
-	r = s;
-	free(s);
-
-	return r;
-    }
-
-    // EI_X decoder
-    String decode_string();
-    String decode_binary_string();
-    int decode_tuple_header();
-    int decode_list_header();
-    int decode_version();
-    erlang_ref decode_ref();
-    erlang_pid decode_pid();
-    unsigned long decode_ulong();
-    String decode_atom();
-    void decode_binary(void *b, int len);
-    void get_type(int *type, int *size);
-    void skip_term();
-
-    // EI_X encoder
-    void encode_version();
-    void encode_tuple_header(int arity);
-    void encode_ref(const erlang_ref &ref);
-    void encode_atom(const char *s);
-    void encode_atom(const String &s);
-};
 
 // global Id Manager for Groups
 extern IdManager group_ids;
@@ -86,7 +31,6 @@ public:
 
     void selected(int fd, int mask);
 
-    DF_Group *lookup_group(const String name) const;
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
     DF_RuleAction lookup_flow_action(uint32_t id) const;
     void set_flow_action(uint32_t id, DF_RuleAction action);
@@ -100,12 +44,10 @@ private:
     String node_name;
     IPAddress local_ip;
 
-    GroupTable groups;
     GroupTableIP ip_groups;
     GroupTableMAC mac_groups;
 
     FlowActionTable flows;
-    DF_Group *get_group(const String name);
 
 public:
     ClientTable clients;
@@ -127,43 +69,51 @@ private:
 	DF_Store *store;
 
 	ClientTable &clients;
-	GroupTable &groups;
 	GroupTableMAC &mac_groups;
 	GroupTableIP &ip_groups;
 
         connection(int fd_, ErlConnect *conp_,
 		   DF_Store *store_,
 		   ClientTable &clients_,
-		   GroupTable &groups_,
 		   GroupTableMAC &mac_groups_,
 		   GroupTableIP &ip_groups_,
 		   bool debug = false, bool trace = false);
         void read();
 
     private:
-	// data structure decoder functions
-	IPAddress decode_ipaddress();
-
+	// data structure en/decoder functions
 	void decode_group();
 	void decode_groups();
 
+	// NAT
 	NATTranslation decode_nat_translation(const String type_atom);
 	void decode_nat(NATTable &nat_rules);
 	NATTable decode_nat_list();
 
+	void encode_nat_list(const NATTable &rules);
+
+	// Client Rules
 	void decode_client_rule(ClientRuleTable &rules);
 	ClientRuleTable decode_client_rules_list();
 
+	void encode_client_rules_list(const ClientRuleTable &rules);
+
+	// Clients
 	ClientKey decode_client_key();
 	ClientValue *decode_client_value(ClientKey key);
 
 	void decode_client();
 	void decode_clients();
 
+	// Dump Handler
+	void dump_groups();
+	void dump_clients();
+
 	// Erlang call handler
 	void erl_bind(int arity);
 	void erl_init(int arity);
 	void erl_insert(int arity);
+	void erl_dump(int arity);
 
 	// Erlang generic call handler
 	void handle_gen_call_click(const String fn, int arity);

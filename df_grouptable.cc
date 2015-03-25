@@ -16,16 +16,21 @@
 
 CLICK_DECLS
 
-DF_Group::DF_Group()
+DF_GroupEntry::~DF_GroupEntry()
 {
-    _id = group_ids.AllocateId();
-    click_chatter("%p{element}: AllocateId: %d\n", this, _id);
 }
 
-DF_Group::~DF_Group()
+StringAccum& DF_GroupEntry::unparse(StringAccum& sa) const
 {
-    click_chatter("%p{element}: FreeId: %d\n", this, _id);
-    group_ids.FreeId(_id);
+    sa << " -> " << id();
+    return sa;
+}
+
+String DF_GroupEntry::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
 }
 
 DF_SetGroup::DF_SetGroup() {}
@@ -37,7 +42,7 @@ DF_SetGroup::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     DF_Store *new_store;
     String anno;
-    String group;
+    DF_GroupEntry::GroupId group;
 
     if (Args(conf, this, errh)
 	.read_mp("STORE", ElementCastArg("DF_Store"), new_store)
@@ -63,10 +68,7 @@ DF_SetGroup::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_SetGroup::simple_action(Packet *p)
 {
-    DF_Group *group = _store->lookup_group(_group);
-
-    if (group)
-	SET_GROUP_ANNO(p, _anno, group->id());
+    SET_GROUP_ANNO(p, _anno, _group);
 
     return p;
 }

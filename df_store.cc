@@ -1,4 +1,5 @@
 #include <click/config.h>
+#include "ei.hh"
 #include "df_clients.hh"
 #include "df_store.hh"
 #include "df.hh"
@@ -11,202 +12,6 @@
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
 #include <fcntl.h>
-#include "ei.h"
-
-#define DEBUG
-
-CLICK_DECLS
-
-extern "C" {
-
-void* ei_malloc (long size);
-
-}
-
-ei_x::ei_x(long size)
-{
-#define BLK_MAX 127
-
-    size = (size + BLK_MAX) & ~BLK_MAX;
-
-#undef BLK_MAX
-
-    x.buff = (char *)ei_malloc(size);
-    x.buffsz = size;
-    x.index = 0;
-
-    if (!x.buff)
-	throw std::bad_alloc();
-}
-
-ei_x::~ei_x()
-{
-    ei_x_free(&x);
-}
-
-// EI_X decoder
-
-String ei_x::decode_string()
-{
-    int type;
-    int size;
-
-    get_type(&type, &size);
-
-    String str = String::make_uninitialized(size);
-    // NB: mutable_c_str() creates space for the terminating null character
-    if (char *s = str.mutable_c_str()) {
-	if (::ei_decode_string(x.buff, &x.index, s) != 0)
-	    throw ei_badarg();
-    } else
-	    throw std::bad_alloc();
-
-    return str;
-}
-
-String ei_x::decode_binary_string()
-{
-    int type;
-    int size;
-    long bin_size;
-
-    get_type(&type, &size);
-
-    if (type != ERL_BINARY_EXT)
-	throw ei_badarg();
-
-    String str = String::make_uninitialized(size);
-    // NB: mutable_c_str() creates space for the terminating null character
-    if (char *s = str.mutable_c_str()) {
-	if (::ei_decode_binary(x.buff, &x.index, s, &bin_size) != 0)
-	    throw ei_badarg();
-    } else
-	throw std::bad_alloc();
-
-    return str;
-}
-int ei_x::decode_tuple_header()
-{
-    int arity;
-
-    if (::ei_decode_tuple_header(x.buff, &x.index, &arity) != 0)
-	throw ei_badarg();
-
-    return arity;
-}
-
-int ei_x::decode_list_header()
-{
-    int arity;
-
-    if (::ei_decode_list_header(x.buff, &x.index, &arity) != 0)
-	throw ei_badarg();
-
-    return arity;
-}
-
-int ei_x::decode_version()
-{
-    int version;
-
-    if (::ei_decode_version(x.buff, &x.index, &version) != 0)
-	throw ei_badarg();
-
-    return version;
-}
-
-erlang_ref ei_x::decode_ref()
-{
-    erlang_ref p;
-
-    if (::ei_decode_ref(x.buff, &x.index, &p) != 0)
-	throw ei_badarg();
-
-    return p;
-}
-
-erlang_pid ei_x::decode_pid()
-{
-    erlang_pid p;
-
-    if (::ei_decode_pid(x.buff, &x.index, &p) != 0)
-	throw ei_badarg();
-
-    return p;
-}
-
-unsigned long ei_x::decode_ulong()
-{
-    unsigned long p;
-
-    if (::ei_decode_ulong(x.buff, &x.index, &p) != 0)
-	throw ei_badarg();
-
-    return p;
-}
-
-String ei_x::decode_atom()
-{
-    char atom[MAXATOMLEN+1] = {0};
-
-    if (::ei_decode_atom(x.buff, &x.index, atom) != 0)
-	throw ei_badarg();
-
-    return atom;
-}
-
-void ei_x::decode_binary(void *b, int len)
-{
-    int type;
-    int size;
-    long bin_size;
-
-    get_type(&type, &size);
-    if (type != ERL_BINARY_EXT
-	|| size != len
-	|| ::ei_decode_binary(x.buff, &x.index, b, &bin_size) != 0
-	|| bin_size != len)
-	throw ei_badarg();
-}
-
-void ei_x::get_type(int *type, int *size)
-{
-    if (::ei_get_type(x.buff, &x.index, type, size) != 0)
-	throw ei_badarg();
-}
-
-void ei_x::skip_term()
-{
-    if (::ei_skip_term(x.buff, &x.index) != 0)
-	throw ei_badarg();
-}
-
-// EI_X encoder
-
-void ei_x::encode_version()
-{
-    ei_x_encode_version(&x);
-}
-
-void ei_x::encode_tuple_header(int arity)
-{
-    ei_x_encode_tuple_header(&x, arity);
-}
-
-void ei_x::encode_ref(const erlang_ref &ref)
-{
-    ei_x_encode_ref(&x, &ref);
-}
-
-void ei_x::encode_atom(const char *s)
-{
-    ei_x_encode_atom(&x, s);
-}
-
-void ei_x::encode_atom(const String &s)
-{
-    ei_x_encode_atom(&x, s.c_str());
-}
 
 IdManager group_ids;
 
@@ -363,31 +168,6 @@ DF_Store::cleanup(CleanupStage)
         }
 }
 
-DF_Group *
-DF_Store::get_group(const String name)
-{
-    DF_Group *grp;
-
-    if (!(grp = lookup_group(name))) {
-	grp = new DF_Group(name);
-	groups.push_back(grp);
-    }
-
-    return grp;
-}
-
-DF_Group *
-DF_Store::lookup_group(const String name) const
-{
-    // FIXME: stupid and slow linear lookup, has to visit every entry in the vector => O(n) complexity!
-    for (GroupTable::const_iterator it = groups.begin(); it != groups.end(); ++it) {
-	if (((*it)->group_name() == name))
-	    return *it;
-    }
-
-    return NULL;
-}
-
 DF_GroupEntryIP *
 DF_Store::lookup_group_ip(uint32_t addr) const
 {
@@ -425,7 +205,6 @@ DF_Store::set_flow_action(uint32_t id_, DF_RuleAction action_)
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
 				 DF_Store *store_,
 				 ClientTable &clients_,
-				 GroupTable &groups_,
 				 GroupTableMAC &mac_groups_,
 				 GroupTableIP &ip_groups_,
 				 bool debug_, bool trace_)
@@ -433,27 +212,11 @@ DF_Store::connection::connection(int fd_, ErlConnect *conp_,
       in_closed(false), out_closed(false),
       conp(*conp_), x_in(2048), x_out(2048),
       store(store_), clients(clients_),
-      groups(groups_), mac_groups(mac_groups_), ip_groups(ip_groups_)
+      mac_groups(mac_groups_), ip_groups(ip_groups_)
 {
 }
 
 // data structure decoder functions
-
-IPAddress
-DF_Store::connection::decode_ipaddress()
-{
-    uint32_t a = 0;
-
-    if (x_in.decode_tuple_header() != 4)
-	throw ei_badarg();
-
-    for (int i = 0; i < 4; i++) {
-	a = a << 8;
-	a |= x_in.decode_ulong();
-    }
-
-    return IPAddress(htonl(a));
-}
 
 // rule sample: {{{10, 0, 1, 0}, 24}, "Class 1"}
 void
@@ -462,17 +225,16 @@ DF_Store::connection::decode_group()
     unsigned long prefix_len;
     IPAddress addr;
     IPAddress prefix;
-    String group_name;
+    DF_GroupEntry::GroupId group;
 
     if (x_in.decode_tuple_header() != 2 || x_in.decode_tuple_header() != 2)
 	throw ei_badarg();
 
-    addr = decode_ipaddress();
+    addr = x_in.decode_ipaddress();
     prefix_len = x_in.decode_ulong();
-    group_name = x_in.decode_string();
+    group = x_in.decode_ulong();
 
-    DF_Group *grp = store->get_group(group_name);
-    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(grp->id(), addr, IPAddress::make_prefix(prefix_len));
+    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(group, addr, IPAddress::make_prefix(prefix_len));
     if (trace)
 	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
     ip_groups.push_back(ip_grp);
@@ -540,21 +302,21 @@ DF_Store::connection::decode_nat_translation(const String type_atom)
     if (trace)
 	click_chatter("decode_nat_translation: %s\n", x_in.unparse().c_str());
 
-    for (type = 0; type < NATTranslation::Translations.size(); type++)
+    for (type = 0; type < NATTranslation::LastEntry + 1; type++)
 	if (NATTranslation::Translations[type] ==  type_atom)
 	    break;
 
     switch (type) {
     case NATTranslation::SymetricAddressKeyed:
     case NATTranslation::AddressKeyed:
-	nat_addr = decode_ipaddress();
+	nat_addr = x_in.decode_ipaddress();
 	break;
 
     case NATTranslation::PortKeyed:
 	if (x_in.decode_tuple_header() != 3)
 	    throw ei_badarg();
 
-	nat_addr = decode_ipaddress();
+	nat_addr = x_in.decode_ipaddress();
 	min_port = x_in.decode_ulong();
 	max_port = x_in.decode_ulong();
 	break;
@@ -581,7 +343,7 @@ DF_Store::connection::decode_nat(NATTable &nat_rules)
     if (x_in.decode_tuple_header() != 3)
 	throw ei_badarg();
 
-    IPAddress addr = decode_ipaddress();
+    IPAddress addr = x_in.decode_ipaddress();
     String translation_type = x_in.decode_atom();
     NATTranslation translation = decode_nat_translation(translation_type);
 
@@ -620,11 +382,45 @@ DF_Store::connection::decode_nat_list()
 }
 
 void
+DF_Store::connection::encode_nat_list(const NATTable &rules)
+{
+     for (NATTable::const_iterator it = rules.begin(); it != rules.end(); ++it) {
+	 x_out.encode_list_header(1)
+	     .encode_tuple_header(3)
+	     .encode_ipaddress(it.key())
+	     .encode_atom(NATTranslation::Translations[it.value().type]);
+
+	 switch (it.value().type) {
+	 case NATTranslation::SymetricAddressKeyed:
+	 case NATTranslation::AddressKeyed:
+	     x_out.encode_ipaddress(it.value().nat_addr);
+	     break;
+
+	 case NATTranslation::PortKeyed:
+	     x_out.encode_tuple_header(3)
+		 .encode_ipaddress(it.value().nat_addr)
+		 .encode_long(it.value().min_port)
+		 .encode_long(it.value().max_port);
+	     break;
+
+	 case NATTranslation::Random:
+	 case NATTranslation::RandomPersistent:
+	 case NATTranslation::Masquerade:
+	     x_out.encode_atom("undefined");
+	     break;
+
+	 default:
+	     x_out.encode_long(it.value().type);
+	     break;
+	 }
+     }
+     x_out.encode_empty_list();
+}
+
+void
 DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
 {
     DF_RuleAction out = DF_RULE_UNKNOWN;
-    int gs_id;
-    int gd_id;
 
     if (trace)
 	click_chatter("decode_client_rules: %s\n", x_in.unparse().c_str());
@@ -632,19 +428,16 @@ DF_Store::connection::decode_client_rule(ClientRuleTable &rules)
     if (x_in.decode_tuple_header() != 3)
 	throw ei_badarg();
 
-    String src = x_in.decode_binary_string();
-    String dst = x_in.decode_binary_string();
+    DF_GroupEntry::GroupId gs_id = x_in.decode_ulong();
+    DF_GroupEntry::GroupId gd_id = x_in.decode_ulong();
     String out_atom = x_in.decode_atom();
 
-    if (out_atom == "deny")
-	    out = DF_RULE_DENY;
-    else if (out_atom ==  "drop")
-        out = DF_RULE_DROP;
-    else if (out_atom == "accept")
-        out = DF_RULE_ACCEPT;
+    for (int i = 0; i < DF_RULE_SIZE; i++)
+	if (ClientRule::ActionType[i] == out_atom) {
+	    out = (DF_RuleAction)i;
+	    break;
+	}
 
-    gs_id = store->get_group(src)->id();
-    gd_id = store->get_group(dst)->id();
     rules.push_back(new ClientRule(gs_id, gd_id, out));
 }
 
@@ -677,6 +470,19 @@ DF_Store::connection::decode_client_rules_list()
     return rules;
 }
 
+void
+DF_Store::connection::encode_client_rules_list(const ClientRuleTable &rules)
+{
+    for (ClientRuleTable::const_iterator it = rules.begin(); it != rules.end(); ++it) {
+	x_out.encode_list_header(1)
+	    .encode_tuple_header(3)
+	    .encode_long((*it)->src)
+	    .encode_long((*it)->dst)
+	    .encode_atom(ClientRule::ActionType[(*it)->out]);
+    }
+    x_out.encode_empty_list();
+}
+
 // Value: {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}
 ClientValue *
 DF_Store::connection::decode_client_value(ClientKey key)
@@ -687,7 +493,7 @@ DF_Store::connection::decode_client_value(ClientKey key)
     if (x_in.decode_tuple_header() != 3)
 	throw ei_badarg();
 
-    String group = x_in.decode_binary_string();
+    DF_GroupEntry::GroupId group = x_in.decode_ulong();
     NATTable nat_rules = decode_nat_list();
     ClientRuleTable rules = decode_client_rules_list();
 
@@ -709,10 +515,9 @@ DF_Store::connection::decode_client()
 
     clients.insert(key.hashcode(), value);
 
-    DF_Group *grp = store->get_group(value->group);
-    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(grp->id(), value);
+    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
     if (trace)
-	click_chatter("decode_group: %s\n", grp->unparse().c_str());
+	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
     ip_groups.push_back(ip_grp);
 }
 
@@ -740,6 +545,51 @@ DF_Store::connection::decode_clients()
 
 	decode_client();
     } while (arity-- > 0);
+}
+
+// rule sample: {{{10, 0, 1, 0}, 24}, "Class 1"}
+void
+DF_Store::connection::dump_groups()
+{
+    for (GroupTableMAC::const_iterator it = mac_groups.begin(); it != mac_groups.end(); ++it) {
+	x_out.encode_list_header(1);
+	x_out.encode_atom("ok");
+    }
+    for (GroupTableIP::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
+	x_out.encode_list_header(1)
+	    .encode_tuple_header(2);
+
+	x_out.encode_tuple_header(2)
+	    .encode_ipaddress((*it)->addr())
+	    .encode_long((*it)->prefix_len());
+
+	x_out.encode_long((*it)->id());
+    }
+    x_out.encode_empty_list();
+}
+
+
+void
+DF_Store::connection::dump_clients()
+{
+    for (ClientTable::const_iterator it = clients.begin(); it != clients.end(); ++it) {
+	x_out.encode_list_header(1);
+
+	// {Key, Value}
+	x_out.encode_tuple_header(2);
+
+	// Key = {Type, Addr} - FIXME: only 'inet' for now
+	x_out.encode_tuple_header(2)
+	    .encode_atom("inet")
+	    .encode_binary(it.value()->key.addr.data(), 4);
+
+	// Value = {Group, NATTable, ClientRuleTable}
+	x_out.encode_tuple_header(3);
+	x_out.encode_long(it.value()->group);
+	encode_nat_list(it.value()->nat_rules);
+	encode_client_rules_list(it.value()->rules);
+    }
+    x_out.encode_empty_list();
 }
 
 // Erlang call handlers
@@ -784,13 +634,36 @@ DF_Store::connection::erl_insert(int arity)
 
     clients.insert(key.hashcode(), value);
 
-    DF_Group *grp = store->get_group(value->group);
-    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(grp->id(), value);
+    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
     if (trace)
-	click_chatter("decode_group: %s\n", grp->unparse().c_str());
+	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
     ip_groups.push_back(ip_grp);
 
     x_out.encode_atom("ok");
+}
+
+void
+DF_Store::connection::erl_dump(int arity)
+{
+    if (trace)
+	click_chatter("erl_init: %d\n", arity);
+
+    if (arity == 1) {
+	x_out.encode_tuple_header(2);
+	dump_groups();
+	dump_clients();
+    }
+    else if (arity == 2) {
+	String what = x_in.decode_atom();
+	if (what == "groups")
+	    dump_groups();
+	else if (what == "clients")
+	    dump_clients();
+	else
+	    throw ei_badarg();
+    }
+    else
+	throw ei_badarg();
 }
 
 // Erlang generic call handlers
@@ -806,6 +679,9 @@ DF_Store::connection::handle_gen_call_click(const String fn, int arity)
     }
     if (fn ==  "insert") {
 	erl_insert(arity);
+    }
+    if (fn ==  "dump") {
+	erl_dump(arity);
     }
     else
 	x_out.encode_atom("error");
@@ -832,9 +708,9 @@ DF_Store::connection::handle_gen_call(const String to)
 	arity = x_in.decode_tuple_header();
 	fn = x_in.decode_atom();
 
-	x_out.encode_version();
-	x_out.encode_tuple_header(2);
-	x_out.encode_ref(ref);
+	x_out.encode_version()
+	    .encode_tuple_header(2)
+	    .encode_ref(ref);
 
 	if (to == "net_kernel" && fn ==  "is_auth") {
 	    x_out.encode_atom("yes");
@@ -931,7 +807,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp, this, clients, groups, mac_groups, ip_groups, true);
+    _conns[fd] = new connection(fd, conp, this, clients, mac_groups, ip_groups, true);
 }
 
 void

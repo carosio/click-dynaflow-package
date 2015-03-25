@@ -5,46 +5,29 @@
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
 
-class DF_Group {
-private:
-    int _id;
-    String _group_name;
-
-public:
-    DF_Group();
-    DF_Group(String group_name_) : _group_name(group_name_) {};
-    ~DF_Group();
-
-    virtual StringAccum& unparse(StringAccum& sa) const;
-    virtual String unparse() const;
-
-    inline int id() const { return _id; };
-    inline String group_name() const { return _group_name; };
-
-    inline bool operator==(DF_Group b) { return _group_name == b._group_name; }
-
-    // TODO: add HashContainer support for finding groups by name
-};
-
 class DF_GroupEntry {
+public:
+    typedef uint32_t GroupId;
 private:
-    int _id;
+    GroupId _id;
 
 public:
-    DF_GroupEntry(int id_) : _id(id_) {};
-    ~DF_GroupEntry() {};
+    DF_GroupEntry(GroupId id_) : _id(id_) {};
+    virtual ~DF_GroupEntry();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
 
-    inline int id() const { return _id; };
+    inline GroupId id() const { return _id; };
 
     inline bool operator==(DF_GroupEntry b) { return _id == b._id; }
-
-    // TODO: add HashContainer support for finding groups by name
 };
 
-typedef Vector<DF_Group *> GroupTable;
+inline StringAccum&
+operator<<(StringAccum& sa, const DF_GroupEntry& entry)
+{
+    return entry.unparse(sa);
+}
 
 /*
  * =c
@@ -78,7 +61,7 @@ public:
 
 private:
     DF_Store *_store;
-    String _group;
+    DF_GroupEntry::GroupId _group;
     int _anno;
 };
 

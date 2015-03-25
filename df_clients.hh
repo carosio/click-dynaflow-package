@@ -6,6 +6,7 @@
 #include <click/straccum.hh>
 #include "uniqueid.hh"
 #include "df.hh"
+#include "df_grouptable.hh"
 
 CLICK_DECLS
 
@@ -13,13 +14,14 @@ CLICK_DECLS
 extern IdManager client_ids;
 
 struct NATTranslation {
-    static const Vector<String> Translations;
+    static const String Translations[];
     enum Type { SymetricAddressKeyed,
 		AddressKeyed,
 		PortKeyed,
 		Random,
 		RandomPersistent,
-		Masquerade };
+		Masquerade,
+		LastEntry = Masquerade};
     unsigned int type;
     IPAddress nat_addr;
     int min_port;
@@ -56,11 +58,13 @@ public:
 };
 
 struct ClientRule {
-    int src;
-    int dst;
+    static const String ActionType[];
+
+    DF_GroupEntry::GroupId src;
+    DF_GroupEntry::GroupId dst;
     DF_RuleAction out;
 
-    ClientRule(int src_, int dst_, DF_RuleAction out_) :
+    ClientRule(DF_GroupEntry::GroupId src_, DF_GroupEntry::GroupId dst_, DF_RuleAction out_) :
 	src(src_), dst(dst_), out(out_) {};
 };
 
@@ -73,12 +77,12 @@ private:
 public:
     ClientKey key;
 
-    String group;
+    DF_GroupEntry::GroupId group;
     NATTable nat_rules;
     ClientRuleTable rules;
 
     ClientValue();
-    ClientValue(ClientKey key_, String group_,
+    ClientValue(ClientKey key_, DF_GroupEntry::GroupId group_,
 		NATTable nat_rules_, ClientRuleTable rules_) :
 	key(key_), group(group_), nat_rules(nat_rules_), rules(rules_) {};
     ~ClientValue();
