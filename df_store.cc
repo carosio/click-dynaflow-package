@@ -193,7 +193,7 @@ DF_Store::lookup_client(uint32_t id_) const
 DF_RuleAction
 DF_Store::lookup_flow_action(uint32_t id_) const
 {
-    return flows.find(id_);
+    return flows.find(id_, DF_RULE_UNKNOWN);
 }
 
 void
