@@ -38,9 +38,9 @@ class DF_Store;
 
 class DF_GroupEntryIP: public DF_GroupEntry {
 public:
-    DF_GroupEntryIP(int id, ClientValue *client) :
-	DF_GroupEntry(id), _addr(client->key.addr), _prefix(IPAddress::make_prefix(32)), _client(client) {};
-    DF_GroupEntryIP(int id, IPAddress addr_, IPAddress prefix_) :
+    DF_GroupEntryIP(ClientValue *client) :
+	DF_GroupEntry(client->group), _addr(client->key.addr), _prefix(IPAddress::make_prefix(32)), _client(client) {};
+    DF_GroupEntryIP(GroupId id, IPAddress addr_, IPAddress prefix_) :
 	DF_GroupEntry(id), _addr(addr_), _prefix(prefix_), _client(NULL) {};
     ~DF_GroupEntryIP() {};
 

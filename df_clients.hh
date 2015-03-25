@@ -6,6 +6,7 @@
 #include <click/straccum.hh>
 #include "uniqueid.hh"
 #include "df.hh"
+#include "df_grouptable.hh"
 
 CLICK_DECLS
 
@@ -59,11 +60,11 @@ public:
 struct ClientRule {
     static const String ActionType[];
 
-    uint32_t src;
-    uint32_t dst;
+    DF_GroupEntry::GroupId src;
+    DF_GroupEntry::GroupId dst;
     DF_RuleAction out;
 
-    ClientRule(int src_, int dst_, DF_RuleAction out_) :
+    ClientRule(DF_GroupEntry::GroupId src_, DF_GroupEntry::GroupId dst_, DF_RuleAction out_) :
 	src(src_), dst(dst_), out(out_) {};
 };
 
@@ -76,12 +77,12 @@ private:
 public:
     ClientKey key;
 
-    String group;
+    DF_GroupEntry::GroupId group;
     NATTable nat_rules;
     ClientRuleTable rules;
 
     ClientValue();
-    ClientValue(ClientKey key_, String group_,
+    ClientValue(ClientKey key_, DF_GroupEntry::GroupId group_,
 		NATTable nat_rules_, ClientRuleTable rules_) :
 	key(key_), group(group_), nat_rules(nat_rules_), rules(rules_) {};
     ~ClientValue();

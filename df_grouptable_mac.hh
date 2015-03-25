@@ -34,7 +34,7 @@ class DF_Store;
 
 class DF_GroupEntryMAC: public DF_GroupEntry {
 public:
-  DF_GroupEntryMAC(int id, IPAddress addr_, IPAddress prefix_) :
+  DF_GroupEntryMAC(GroupId id, IPAddress addr_, IPAddress prefix_) :
 	DF_GroupEntry(id), addr(addr_), prefix(prefix_) {};
     ~DF_GroupEntryMAC() {};
 

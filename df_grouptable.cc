@@ -16,10 +16,6 @@
 
 CLICK_DECLS
 
-DF_GroupEntry::DF_GroupEntry(uint32_t id_) : _id(id_)
-{
-}
-
 DF_GroupEntry::~DF_GroupEntry()
 {
 }
@@ -37,31 +33,6 @@ String DF_GroupEntry::unparse() const
     return sa.take_string();
 }
 
-DF_Group::DF_Group()
-{
-    _id = group_ids.AllocateId();
-    click_chatter("%p{element}: AllocateId: %d\n", this, _id);
-}
-
-DF_Group::~DF_Group()
-{
-    click_chatter("%p{element}: FreeId: %d\n", this, _id);
-    group_ids.FreeId(_id);
-}
-
-StringAccum& DF_Group::unparse(StringAccum& sa) const
-{
-    sa << id() << ": " << group_name();
-    return sa;
-}
-
-String DF_Group::unparse() const
-{
-    StringAccum sa;
-    sa << *this;
-    return sa.take_string();
-}
-
 DF_SetGroup::DF_SetGroup() {}
 
 DF_SetGroup::~DF_SetGroup() {}
@@ -71,7 +42,7 @@ DF_SetGroup::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     DF_Store *new_store;
     String anno;
-    String group;
+    DF_GroupEntry::GroupId group;
 
     if (Args(conf, this, errh)
 	.read_mp("STORE", ElementCastArg("DF_Store"), new_store)
@@ -97,10 +68,7 @@ DF_SetGroup::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_SetGroup::simple_action(Packet *p)
 {
-    DF_Group *group = _store->lookup_group(_group);
-
-    if (group)
-	SET_GROUP_ANNO(p, _anno, group->id());
+    SET_GROUP_ANNO(p, _anno, _group);
 
     return p;
 }

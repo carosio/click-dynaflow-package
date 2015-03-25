@@ -31,7 +31,6 @@ public:
 
     void selected(int fd, int mask);
 
-    DF_Group *lookup_group(const String name) const;
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
     DF_RuleAction lookup_flow_action(uint32_t id) const;
     void set_flow_action(uint32_t id, DF_RuleAction action);
@@ -45,12 +44,10 @@ private:
     String node_name;
     IPAddress local_ip;
 
-    GroupTable groups;
     GroupTableIP ip_groups;
     GroupTableMAC mac_groups;
 
     FlowActionTable flows;
-    DF_Group *get_group(const String name);
 
 public:
     ClientTable clients;
@@ -72,14 +69,12 @@ private:
 	DF_Store *store;
 
 	ClientTable &clients;
-	GroupTable &groups;
 	GroupTableMAC &mac_groups;
 	GroupTableIP &ip_groups;
 
         connection(int fd_, ErlConnect *conp_,
 		   DF_Store *store_,
 		   ClientTable &clients_,
-		   GroupTable &groups_,
 		   GroupTableMAC &mac_groups_,
 		   GroupTableIP &ip_groups_,
 		   bool debug = false, bool trace = false);
