@@ -24,7 +24,7 @@ DF_PEFSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
     
 
     for (int slot = 0; slot < conf.size(); slot++) {
-        String s = String(conf[slot].data());
+        String s = conf[slot];
 
         if(s.lower() == "accept") {
             mapping[DF_RULE_ACCEPT] = slot;
