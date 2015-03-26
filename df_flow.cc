@@ -75,7 +75,12 @@ Flow * FlowHashEntry::get(uint32_t count) {
     return NULL;
 }
 
-void FlowHashEntry::add(Flow *f) {
+void FlowHashEntry::add(Flow *f, bool check) {
+    if(check) {
+        if(get(f))
+            return;
+    }
+
     fv.push_back(f);
     f->_count = ids.AllocateId();
     f->_count_valid = true;

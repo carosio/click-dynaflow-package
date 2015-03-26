@@ -62,7 +62,7 @@ class FlowHashEntry {
 
     Flow * get(Flow *f);
     Flow * get(uint32_t count);
-    void add(Flow *f);
+    void add(Flow *f, bool check=true);
     Flow * remove(Flow *f);
 
   private:
