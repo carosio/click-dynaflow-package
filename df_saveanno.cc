@@ -4,6 +4,7 @@
 #include "df_saveanno.hh"
 #include "df.hh"
 #include "df_flow.hh"
+#include "df_clients.hh"
 
 #define DEBUG
 
@@ -31,15 +32,20 @@ Packet *
 DF_SaveAnno::simple_action(Packet *p)
 {
     uint32_t f_id = FLOW_ANNO(p);
+    uint32_t srcGroup = GROUP_SRC_ANNO(p);
+    uint32_t dstGroup = GROUP_DST_ANNO(p);
+    uint32_t client_id = CLIENT_ANNO(p);
     DF_RuleAction action = static_cast<DF_RuleAction>(ACTION_ANNO(p));
+    ClientValue *client =_store->lookup_client(client_id);
 
-    _store->set_flow_action(f_id, action);
+    Flow *f = new Flow(p, client, srcGroup, dstGroup, action);
+    assert(f->_id == f_id);
+    _store->set_flow(f);
+    SET_FLOW_COUNT_ANNO(p, f->_count);
 
     // create reverse Flow
-    Flow *f = Flow(p).reverse();
-    _store->set_flow_action(f->_id, action);
-
-    delete f;
+    Flow *rf = f->reverse();
+    _store->set_flow(rf);
 
     return p;
 }
