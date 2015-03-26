@@ -190,16 +190,44 @@ DF_Store::lookup_client(uint32_t id_) const
     return clients.find(id_);
 }
 
-DF_RuleAction
-DF_Store::lookup_flow_action(uint32_t id_) const
+Flow *
+DF_Store::lookup_flow(Flow *f_) const
 {
-    return flows.find(id_, DF_RULE_UNKNOWN);
+    FlowHashEntry *fe = flows.find(f_->_id, NULL);
+    if(!fe)
+        return NULL;
+
+    Flow *f = fe->get(f_);
+    if(!f)
+        return NULL;
+
+    return f;
+}
+
+Flow *
+DF_Store::lookup_flow(uint32_t flow_id, uint32_t count) const
+{
+    FlowHashEntry *fe = flows.find(flow_id, NULL);
+    if(!fe)
+        return NULL;
+
+    Flow *f = fe->get(count);
+    if(!f)
+        return NULL;
+
+    return f;
 }
 
 void
-DF_Store::set_flow_action(uint32_t id_, DF_RuleAction action_)
+DF_Store::set_flow(Flow *f_)
 {
-    flows.insert(id_, action_);
+    FlowHashEntry *fe = flows.find(f_->_id, NULL);
+    if(!fe) {
+        fe = new FlowHashEntry();
+        fe->add(f_);
+        flows.insert(f_->_id, fe);
+    } else
+        fe->add(f_);
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,

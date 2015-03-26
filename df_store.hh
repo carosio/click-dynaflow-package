@@ -32,8 +32,9 @@ public:
     void selected(int fd, int mask);
 
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
-    DF_RuleAction lookup_flow_action(uint32_t id) const;
-    void set_flow_action(uint32_t id, DF_RuleAction action);
+    Flow *lookup_flow(Flow *f) const;
+    Flow *lookup_flow(uint32_t flow_id, uint32_t count) const;
+    void set_flow(Flow *f);
     ClientValue * lookup_client(uint32_t id_) const;
 
 private:
@@ -47,7 +48,7 @@ private:
     GroupTableIP ip_groups;
     GroupTableMAC mac_groups;
 
-    FlowActionTable flows;
+    FlowTable flows;
 
 public:
     ClientTable clients;
