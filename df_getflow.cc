@@ -31,12 +31,26 @@ Packet *
 DF_GetFlow::simple_action(Packet *p)
 {
     Flow *f = new Flow(p);
-    DF_RuleAction action = _store->lookup_flow_action(f->_id);
+    Flow *real_flow = _store->lookup_flow(f);
+    if(!real_flow) { // unknown flow
+        SET_FLOW_ANNO(p, f->_id);
+        SET_ACTION_ANNO(p, DF_RULE_UNKNOWN);
 
-    SET_FLOW_ANNO(p, f->_id);
-    SET_ACTION_ANNO(p, action);
+        delete f;
+
+        return p;
+    }
+
+    assert(f->_id == real_flow->_id);
 
     delete f;
+
+    SET_GROUP_SRC_ANNO(p, real_flow->srcGroup);
+    SET_GROUP_DST_ANNO(p, real_flow->dstGroup);
+    SET_CLIENT_ANNO(p, real_flow->client->id());
+    SET_FLOW_ANNO(p, real_flow->_id);
+    SET_FLOW_COUNT_ANNO(p, real_flow->_count);
+    SET_ACTION_ANNO(p, real_flow->action);
 
     return p;
 }
