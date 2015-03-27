@@ -73,11 +73,14 @@ private:
 	GroupTableMAC &mac_groups;
 	GroupTableIP &ip_groups;
 
+	FlowTable &flows;
+
         connection(int fd_, ErlConnect *conp_,
 		   DF_Store *store_,
 		   ClientTable &clients_,
 		   GroupTableMAC &mac_groups_,
 		   GroupTableIP &ip_groups_,
+		   FlowTable &flows_,
 		   bool debug = false, bool trace = false);
         void read();
 
@@ -109,6 +112,7 @@ private:
 	// Dump Handler
 	void dump_groups();
 	void dump_clients();
+	void dump_flows();
 
 	// Erlang call handler
 	void erl_bind(int arity);

@@ -65,8 +65,8 @@ class FlowHashEntry {
     void add(Flow *f, bool check=true);
     Flow * remove(Flow *f);
 
-  private:
-
+    FlowVector &get_flows() { return fv; };
+private:
     FlowVector fv;
     IdManager ids;
 };

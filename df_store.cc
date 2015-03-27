@@ -235,12 +235,14 @@ DF_Store::connection::connection(int fd_, ErlConnect *conp_,
 				 ClientTable &clients_,
 				 GroupTableMAC &mac_groups_,
 				 GroupTableIP &ip_groups_,
+				 FlowTable &flows_,
 				 bool debug_, bool trace_)
     : debug(debug_), trace(trace_), fd(fd_),
       in_closed(false), out_closed(false),
       conp(*conp_), x_in(2048), x_out(2048),
       store(store_), clients(clients_),
-      mac_groups(mac_groups_), ip_groups(ip_groups_)
+      mac_groups(mac_groups_), ip_groups(ip_groups_),
+      flows(flows_)
 {
 }
 
@@ -620,6 +622,26 @@ DF_Store::connection::dump_clients()
     x_out.encode_empty_list();
 }
 
+void
+DF_Store::connection::dump_flows()
+{
+    for (FlowTable::const_iterator it = flows.begin(); it != flows.end(); ++it) {
+	for (FlowVector::const_iterator fv = it.value()->get_flows().begin(); fv != it.value()->get_flows().end(); ++fv) {
+	    if (*fv && (*fv)->data) {
+		x_out.encode_list_header(1);
+
+		// {Proto, {SrcIPv4, SrcPort}, {DstIPv4, DstPort}}
+		x_out.encode_tuple_header(3)
+		    .encode_long((*fv)->data->proto)
+		    .encode_tuple_header(2).encode_ipaddress((*fv)->data->src_ipv4).encode_long((*fv)->data->src_port)
+		    .encode_tuple_header(2).encode_ipaddress((*fv)->data->dst_ipv4).encode_long((*fv)->data->dst_port);
+	    }
+	}
+    }
+
+    x_out.encode_empty_list();
+}
+
 // Erlang call handlers
 
 void
@@ -680,6 +702,7 @@ DF_Store::connection::erl_dump(int arity)
 	x_out.encode_tuple_header(2);
 	dump_groups();
 	dump_clients();
+	dump_flows();
     }
     else if (arity == 2) {
 	String what = x_in.decode_atom();
@@ -687,6 +710,8 @@ DF_Store::connection::erl_dump(int arity)
 	    dump_groups();
 	else if (what == "clients")
 	    dump_clients();
+	else if (what == "flows")
+	    dump_flows();
 	else
 	    throw ei_badarg();
     }
@@ -835,7 +860,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp, this, clients, mac_groups, ip_groups, true);
+    _conns[fd] = new connection(fd, conp, this, clients, mac_groups, ip_groups, flows, true);
 }
 
 void
