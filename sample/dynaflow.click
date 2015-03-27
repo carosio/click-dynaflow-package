@@ -61,6 +61,7 @@ intern_arp_class[3] -> Discard;
 
 // intern -> extern
 
+intern_PEF_1st :: DF_PEFSwitch(unknown, else);
 intern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, else);
 
 intern_dst_classify :: DF_GetGroupIP(dfs, -1, dst, IP dst);						// Check if we know the destination IP
@@ -102,21 +103,26 @@ intern_Forward :: DropBroadcasts     									// TODO: continue with routing
 // cp1[1] -> ICMPError(18.26.4.24, redirect, host) -> [0]rt;
 
 intern_noaction :: Discard;     									// TODO: WTF?
+intern_unknown :: Discard;     									// TODO: WTF?
 
 intern_PEF[0] -> intern_Forward;									// Accept   -> continue with Forwarding
 intern_PEF[1] -> Discard;										// Drop     -> discard the packet
 intern_PEF[2] -> intern_Deny;										// Deny     -> return ICMP Error - Admin Prohibited
-intern_PEF[3] -> intern_src_MAC;									// Unknown  -> try to find client
+intern_PEF[3] -> intern_unknown;									// Unknown  -> try to find client
 intern_PEF[4] -> intern_noaction;									// NoAction -> WTF?
 intern_PEF[5] -> Discard;										// Else
+
+intern_PEF_1st[0] -> intern_src_MAC;									// Unknown  -> try to find client
+intern_PEF_1st[1] -> intern_PEF;									// Else
 
 intern_arp_class[2] -> Strip(14)
         -> CheckIPHeader
 	-> DF_GetFlow(dfs)
-	-> intern_PEF;
+	-> intern_PEF_1st;
 
 // extern -> intern
 
+extern_PEF_1st :: DF_PEFSwitch(unknown, else);
 extern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, else);
 
 extern_src_classify :: DF_GetGroupIP(dfs, -1, src, IP src);							// Check if we know the source IP
@@ -154,16 +160,20 @@ extern_Forward :: DropBroadcasts     									// TODO: continue with routing
 // cp1[1] -> ICMPError(18.26.4.24, redirect, host) -> [0]rt;
 
 extern_noaction :: Discard;     									// TODO: WTF?
+extern_unknown :: Discard;
 
 extern_PEF[0] -> extern_Forward;									// Accept   -> continue with Forwarding
 extern_PEF[1] -> Discard;										// Drop     -> discard the packet
 extern_PEF[2] -> extern_Deny;										// Deny     -> return ICMP Error - Admin Prohibited
-extern_PEF[3] -> extern_dst_IP;										// Unknown  -> try to find client
+extern_PEF[3] -> extern_unknown;										// Unknown  -> try to find client
 extern_PEF[4] -> extern_noaction;									// NoAction -> WTF?
 extern_PEF[5] -> Discard;										// Else
+
+extern_PEF_1st[0] -> extern_dst_IP;									// Unknown  -> try to find client
+extern_PEF_1st[1] -> extern_PEF;									// Else
 
 extern_arp_class[2] -> Strip(14)
         -> CheckIPHeader
 	-> DF_GetFlow(dfs)
-	-> intern_PEF;
+	-> extern_PEF_1st;
 
