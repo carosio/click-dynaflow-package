@@ -29,19 +29,22 @@ DF_SetAction::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_SetAction::simple_action(Packet *p)
 {
-
     uint32_t c_id = CLIENT_ANNO(p);
     uint32_t gs_id = GROUP_SRC_ANNO(p);
     uint32_t gd_id = GROUP_DST_ANNO(p);
     ClientValue *client = _store->lookup_client(c_id);
 
-    ClientRuleTable *cr = &(client->rules);
+    ClientRuleTable &cr = client->rules;
     DF_RuleAction action = DF_RULE_UNKNOWN;
-    for (ClientRuleTable::const_iterator it = cr->begin(); it != cr->end(); ++it) {
+    for (ClientRuleTable::const_iterator it = cr.begin(); it != cr.end(); ++it) {
+	click_chatter("%s: Rule: %08x:%08x -> %08x:%08x : %d\n", declaration().c_str(), (*it)->src, gs_id, (*it)->dst, gd_id, (*it)->out);
         if (((*it)->src == gs_id) && ((*it)->dst == gd_id)) {
             action = (*it)->out;
+	    break;
         }
     }
+
+    click_chatter("%s: Action %d\n", declaration().c_str(), action);
 
     SET_ACTION_ANNO(p, action);
 

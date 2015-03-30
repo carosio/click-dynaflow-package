@@ -10,38 +10,50 @@
 
 CLICK_DECLS
 
-struct FlowData {
+struct __attribute__ ((__packed__)) FlowData {
     uint32_t src_ipv4;
     uint32_t dst_ipv4;
     uint16_t src_port;
     uint16_t dst_port;
     uint8_t proto;
 
-    FlowData(uint32_t src_ipv4_, uint32_t dst_ipv4_, uint16_t src_port_, uint16_t dst_port_, uint8_t proto_) :
+    FlowData(const Packet *p);
+    FlowData(uint32_t src_ipv4_, uint32_t dst_ipv4_, uint16_t src_port_, uint16_t dst_port_, uint8_t proto_):
         src_ipv4(src_ipv4_), dst_ipv4(dst_ipv4_), src_port(src_port_), dst_port(dst_port_), proto(proto_) {};
 
-    inline FlowData * reverse() { return new FlowData(dst_ipv4, src_ipv4, dst_port, src_port, proto); };
+    inline const FlowData reverse() const { return FlowData(dst_ipv4, src_ipv4, dst_port, src_port, proto); };
     inline bool operator==(FlowData other) { return (src_ipv4 == other.src_ipv4)
                                              && (dst_ipv4 == other.dst_ipv4)
                                              && (src_port == other.src_port)
                                              && (dst_port == other.dst_port)
                                              && (proto == other.proto); };
+
+    StringAccum& unparse(StringAccum& sa) const;
+    String unparse() const;
 };
 
-struct Flow {
-    FlowData  * data;
-    Flow * srcFlow;
+inline StringAccum&
+operator<<(StringAccum& sa, const FlowData& entry)
+{
+    return entry.unparse(sa);
+}
 
-    Flow(Packet *, ClientValue *, uint32_t, uint32_t, DF_RuleAction);
-    Flow(Packet *);
-    Flow(FlowData *, ClientValue *, uint32_t, uint32_t, DF_RuleAction);
-    ~Flow();
+struct Flow {
+    FlowData data;
+    Flow *srcFlow;
+
+    Flow(const Packet *, ClientValue *, uint32_t, uint32_t, DF_RuleAction);
+    Flow(const Packet *);
+    Flow(const FlowData &, ClientValue *, uint32_t, uint32_t, DF_RuleAction);
+    ~Flow() {};
 
     inline bool operator==(Flow other) { return data == other.data; };
     inline uint32_t src_id() { return srcFlow->_id; };
-    inline uint32_t hash() { return jhash(&data, sizeof(FlowData), 0); };
-    inline Flow * reverse() { return new Flow(data->reverse(),
-                                           client, srcGroup, dstGroup, action); };
+    inline uint32_t hash() {
+	return jhash(&data, sizeof(FlowData), 0);
+    };
+    inline Flow * reverse() { return new Flow(data.reverse(),
+					      client, srcGroup, dstGroup, action); };
 
     ClientValue *client;
     uint32_t srcGroup;

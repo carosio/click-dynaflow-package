@@ -194,10 +194,12 @@ Flow *
 DF_Store::lookup_flow(Flow *f_) const
 {
     FlowHashEntry *fe = flows.find(f_->_id, NULL);
+    click_chatter("%s: lookup_flow fe: %p\n", declaration().c_str(), fe);
     if(!fe)
         return NULL;
 
     Flow *f = fe->get(f_);
+    click_chatter("%s: lookup_flow f: %p\n", declaration().c_str(), f);
     if(!f)
         return NULL;
 
@@ -222,12 +224,15 @@ void
 DF_Store::set_flow(Flow *f_)
 {
     FlowHashEntry *fe = flows.find(f_->_id, NULL);
+
     if(!fe) {
         fe = new FlowHashEntry();
         fe->add(f_);
         flows.insert(f_->_id, fe);
     } else
         fe->add(f_);
+
+    click_chatter("%s: set_flow %08x -> %p\n", declaration().c_str(), f_->_id, fe);
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
@@ -543,7 +548,8 @@ DF_Store::connection::decode_client()
     ClientKey key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
-    clients.insert(key.hashcode(), value);
+    clients.insert(value->id(), value);
+    click_chatter("insert client: %08x, %p\n", value->id(), value);
 
     DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
     if (trace)
@@ -627,14 +633,14 @@ DF_Store::connection::dump_flows()
 {
     for (FlowTable::const_iterator it = flows.begin(); it != flows.end(); ++it) {
 	for (FlowVector::const_iterator fv = it.value()->get_flows().begin(); fv != it.value()->get_flows().end(); ++fv) {
-	    if (*fv && (*fv)->data) {
+	    if (*fv) {
 		x_out.encode_list_header(1);
 
 		// {Proto, {SrcIPv4, SrcPort}, {DstIPv4, DstPort}}
 		x_out.encode_tuple_header(3)
-		    .encode_long((*fv)->data->proto)
-		    .encode_tuple_header(2).encode_ipaddress((*fv)->data->src_ipv4).encode_long((*fv)->data->src_port)
-		    .encode_tuple_header(2).encode_ipaddress((*fv)->data->dst_ipv4).encode_long((*fv)->data->dst_port);
+		    .encode_long((*fv)->data.proto)
+		    .encode_tuple_header(2).encode_ipaddress((*fv)->data.src_ipv4).encode_long(ntohs((*fv)->data.src_port))
+		    .encode_tuple_header(2).encode_ipaddress((*fv)->data.dst_ipv4).encode_long(ntohs((*fv)->data.dst_port));
 	    }
 	}
     }
@@ -682,7 +688,8 @@ DF_Store::connection::erl_insert(int arity)
     ClientKey key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
-    clients.insert(key.hashcode(), value);
+    clients.insert(value->id(), value);
+    click_chatter("insert client: %08x, %p\n", value->id(), value);
 
     DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
     if (trace)

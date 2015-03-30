@@ -30,20 +30,19 @@ DF_GetFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_GetFlow::simple_action(Packet *p)
 {
-    Flow *f = new Flow(p);
-    Flow *real_flow = _store->lookup_flow(f);
-    if(!real_flow) { // unknown flow
-        SET_FLOW_ANNO(p, f->_id);
-        SET_ACTION_ANNO(p, DF_RULE_UNKNOWN);
+    Flow f = Flow(p);
+    Flow *real_flow = _store->lookup_flow(&f);
 
-        delete f;
+    click_chatter("%s: flow %s : %p\n", declaration().c_str(), f.data.unparse().c_str(), real_flow);
+
+    if(!real_flow) { // unknown flow
+        SET_FLOW_ANNO(p, f._id);
+        SET_ACTION_ANNO(p, DF_RULE_UNKNOWN);
 
         return p;
     }
 
-    assert(f->_id == real_flow->_id);
-
-    delete f;
+    assert(f._id == real_flow->_id);
 
     SET_GROUP_SRC_ANNO(p, real_flow->srcGroup);
     SET_GROUP_DST_ANNO(p, real_flow->dstGroup);

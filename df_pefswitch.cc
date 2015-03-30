@@ -4,6 +4,7 @@
 #include <click/args.hh>
 #include "df_pefswitch.hh"
 #include "df_store.hh"
+#include "df_clients.hh"
 
 CLICK_DECLS
 
@@ -21,10 +22,11 @@ DF_PEFSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if (conf.size() != noutputs())
         return errh->error("need %d arguments, one per output port", noutputs());
-    
 
     for (int slot = 0; slot < conf.size(); slot++) {
         String s = conf[slot];
+
+	click_chatter("%s: slot %d -> %s\n", declaration().c_str(), slot, s.c_str());
 
         if(s.lower() == "accept") {
             mapping[DF_RULE_ACCEPT] = slot;
@@ -50,12 +52,16 @@ DF_PEFSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
         }
     }
 
+    for(int i = 0; i < DF_RULE_SIZE; i++)
+	click_chatter("%s: config %d -> %d\n", declaration().c_str(), i, mapping[i]);
+
     return 0;
 }
 
 void
 DF_PEFSwitch::push(int, Packet *p)
 {
+    click_chatter("%s: push %s -> %d\n", declaration().c_str(), ClientRule::ActionType[ACTION_ANNO(p)].c_str(), mapping[ACTION_ANNO(p)]);
     checked_output_push(mapping[ACTION_ANNO(p)], p);
 }
 

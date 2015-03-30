@@ -80,14 +80,21 @@ DF_GetGroupIP::simple_action(Packet *p)
 
     DF_GroupEntryIP *group = _store->lookup_group_ip(ip);
     if (!group) {
+	click_chatter("%s: IP %s -> unknown\n", declaration().c_str(), IPAddress(ip).unparse().c_str());
         checked_output_push(1, p);
         return 0;
     }
 
-    ClientValue *client = group->client();
-    if (client && _is_client)
-      SET_CLIENT_ANNO(p, client->id());
+    click_chatter("%s: IP %s -> %s\n", declaration().c_str(), IPAddress(ip).unparse().c_str(), group->unparse().c_str());
 
+    ClientValue *client = group->client();
+    click_chatter("%s: Client: %p, %d\n", declaration().c_str(), client, _is_client);
+    if (client && _is_client) {
+	click_chatter("%s: Client-Id: %08x\n", declaration().c_str(), client->id());
+	SET_CLIENT_ANNO(p, client->id());
+    }
+
+    click_chatter("%s: Group-Id: %08x\n", declaration().c_str(), group->id());
     SET_GROUP_ANNO(p, _anno, group->id());
 
     return p;

@@ -39,7 +39,7 @@ DF_SaveAnno::simple_action(Packet *p)
     ClientValue *client =_store->lookup_client(client_id);
 
     Flow *f = new Flow(p, client, srcGroup, dstGroup, action);
-    assert(f->_id == f_id);
+     assert(f->_id == f_id);
     _store->set_flow(f);
     SET_FLOW_COUNT_ANNO(p, f->_count);
 

@@ -9,13 +9,41 @@
 
 CLICK_DECLS
 
-Flow::Flow(Packet *p, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
+FlowData::FlowData(const Packet *p)
 {
     const click_ip *iph = p->ip_header();
     const click_udp *udph = p->udp_header();
+
     assert(p->has_network_header() && p->has_transport_header() && IP_FIRSTFRAG(iph));
-    data = new FlowData(iph->ip_src.s_addr, iph->ip_dst.s_addr, udph->uh_sport, udph->uh_dport, iph->ip_p);
+
+    proto = iph->ip_p;
+    src_ipv4 = iph->ip_src.s_addr;
+    dst_ipv4 = iph->ip_dst.s_addr;
+    src_port = udph->uh_sport;
+    dst_port = udph->uh_dport;
+
+    click_chatter("FlowData: %s\n", unparse().c_str());
+}
+
+StringAccum& FlowData::unparse(StringAccum& sa) const
+{
+    sa << "(" << (int)proto << "):" << IPAddress(src_ipv4) << ":" << ntohs(src_port) << " -> " << IPAddress(dst_ipv4) << ":" << ntohs(dst_port);
+    return sa;
+}
+
+String FlowData::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
+}
+
+Flow::Flow(const Packet *p, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
+ : data(FlowData(p))
+{
     _id = hash();
+    click_chatter("FlowData: %s hashed to %08x\n", data.unparse().c_str(), _id);
+
     srcFlow = this;
     client = client_;
     srcGroup = srcGroup_;
@@ -25,13 +53,12 @@ Flow::Flow(Packet *p, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGrou
     _count_valid = false;
 }
 
-Flow::Flow(Packet *p)
+Flow::Flow(const Packet *p)
+  : data(FlowData(p))
 {
-    const click_ip *iph = p->ip_header();
-    const click_udp *udph = p->udp_header();
-    assert(p->has_network_header() && p->has_transport_header() && IP_FIRSTFRAG(iph));
-    data = new FlowData(iph->ip_src.s_addr, iph->ip_dst.s_addr, udph->uh_sport, udph->uh_dport, iph->ip_p);
     _id = hash();
+    click_chatter("FlowData: %s hashed to %08x\n", data.unparse().c_str(), _id);
+
     srcFlow = this;
     client = NULL;
     srcGroup = 0;
@@ -41,10 +68,12 @@ Flow::Flow(Packet *p)
     _count_valid = false;
 }
 
-Flow::Flow(FlowData *fd, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
+Flow::Flow(const FlowData &fd, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
+  : data(fd)
 {
-    data = fd;
     _id = hash();
+    click_chatter("FlowData: %s hashed to %08x\n", data.unparse().c_str(), _id);
+
     srcFlow = this;
     client = client_;
     srcGroup = srcGroup_;
@@ -54,14 +83,9 @@ Flow::Flow(FlowData *fd, ClientValue *client_, uint32_t srcGroup_, uint32_t dstG
     _count_valid = false;
 }
 
-Flow::~Flow()
-{
-    delete data;
-}
-
 Flow * FlowHashEntry::get(Flow *f) {
     for (FlowVector::const_iterator it = fv.begin(); it != fv.end(); ++it) {
-        if ((*it) == f)
+        if (*(*it) == *f)
             return (*it);
     }
     return NULL;
@@ -103,4 +127,5 @@ Flow * FlowHashEntry::remove(Flow *f) {
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(Flow)
+ELEMENT_PROVIDES(FlowData)
 ELEMENT_PROVIDES(FlowHashEntry)
