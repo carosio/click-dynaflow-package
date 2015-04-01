@@ -21,7 +21,7 @@ DF_SaveAnno::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if (Args(conf, this, errh)
 	.read_mp("STORE", ElementCastArg("DF_Store"), new_store)
-    .complete() < 0)
+	.complete() < 0)
         return -1;
 
     _store = new_store;
@@ -35,17 +35,17 @@ DF_SaveAnno::simple_action(Packet *p)
     uint32_t srcGroup = GROUP_SRC_ANNO(p);
     uint32_t dstGroup = GROUP_DST_ANNO(p);
     uint32_t client_id = CLIENT_ANNO(p);
+
     DF_RuleAction action = static_cast<DF_RuleAction>(ACTION_ANNO(p));
-    ClientValue *client =_store->lookup_client(client_id);
+    ClientValue *client = _store->lookup_client(client_id);
 
     Flow *f = new Flow(p, client, srcGroup, dstGroup, action);
-     assert(f->_id == f_id);
-    _store->set_flow(f);
-    SET_FLOW_COUNT_ANNO(p, f->_count);
+    click_chatter("%s: Client: (%p)%p\n", declaration().c_str(), &client, client);
+    click_chatter("%s: Flow: %s\n", declaration().c_str(), f->unparse().c_str());
 
-    // create reverse Flow
-    Flow *rf = f->reverse();
-    _store->set_flow(rf);
+    _store->set_flow(f);
+
+    SET_FLOW_ANNO(p, f->id());
 
     return p;
 }

@@ -187,52 +187,26 @@ DF_Store::lookup_group_ip(uint32_t addr) const
 ClientValue *
 DF_Store::lookup_client(uint32_t id_) const
 {
-    return clients.find(id_);
+    ClientValue *cv = clients.get(id_);
+    click_chatter("%s: lookup_client %08x -> %p\n", declaration().c_str(), id_, cv);
+    return cv;
 }
 
 Flow *
-DF_Store::lookup_flow(Flow *f_) const
+DF_Store::lookup_flow(const FlowData &fd) const
 {
-    FlowHashEntry *fe = flows.find(f_->_id, NULL);
-    click_chatter("%s: lookup_flow fe: %p\n", declaration().c_str(), fe);
-    if(!fe)
-        return NULL;
-
-    Flow *f = fe->get(f_);
+    Flow *f = flows.get(fd);
     click_chatter("%s: lookup_flow f: %p\n", declaration().c_str(), f);
-    if(!f)
-        return NULL;
-
-    return f;
-}
-
-Flow *
-DF_Store::lookup_flow(uint32_t flow_id, uint32_t count) const
-{
-    FlowHashEntry *fe = flows.find(flow_id, NULL);
-    if(!fe)
-        return NULL;
-
-    Flow *f = fe->get(count);
-    if(!f)
-        return NULL;
-
     return f;
 }
 
 void
-DF_Store::set_flow(Flow *f_)
+DF_Store::set_flow(Flow *f)
 {
-    FlowHashEntry *fe = flows.find(f_->_id, NULL);
+    click_chatter("%s: set_flow %08x -> %p\n", declaration().c_str(), f->id(), f);
 
-    if(!fe) {
-        fe = new FlowHashEntry();
-        fe->add(f_);
-        flows.insert(f_->_id, fe);
-    } else
-        fe->add(f_);
-
-    click_chatter("%s: set_flow %08x -> %p\n", declaration().c_str(), f_->_id, fe);
+    flows[f->origin()] = f;
+    flows[f->reverse()] = f;
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
@@ -548,8 +522,8 @@ DF_Store::connection::decode_client()
     ClientKey key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
-    clients.insert(value->id(), value);
     click_chatter("insert client: %08x, %p\n", value->id(), value);
+    clients[value->id()] = value;
 
     DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
     if (trace)
@@ -632,16 +606,28 @@ void
 DF_Store::connection::dump_flows()
 {
     for (FlowTable::const_iterator it = flows.begin(); it != flows.end(); ++it) {
-	for (FlowVector::const_iterator fv = it.value()->get_flows().begin(); fv != it.value()->get_flows().end(); ++fv) {
-	    if (*fv) {
-		x_out.encode_list_header(1);
+	const FlowData &k = it.key();
+	const Flow *f = it.value();
 
+	if (f) {
+	    x_out.encode_list_header(1);
+
+	    x_out.encode_tuple_header(3)
+		.encode_long(f->id())
 		// {Proto, {SrcIPv4, SrcPort}, {DstIPv4, DstPort}}
-		x_out.encode_tuple_header(3)
-		    .encode_long((*fv)->data.proto)
-		    .encode_tuple_header(2).encode_ipaddress((*fv)->data.src_ipv4).encode_long(ntohs((*fv)->data.src_port))
-		    .encode_tuple_header(2).encode_ipaddress((*fv)->data.dst_ipv4).encode_long(ntohs((*fv)->data.dst_port));
-	    }
+		.encode_tuple_header(3)
+		    .encode_long(k.proto)
+		    .encode_tuple_header(2)
+			.encode_ipaddress(k.src_ipv4)
+			.encode_long(ntohs(k.src_port))
+		    .encode_tuple_header(2)
+			.encode_ipaddress(k.dst_ipv4)
+			.encode_long(ntohs(k.dst_port))
+		// {SourceGroup, DestinationGroup, Action}
+		.encode_tuple_header(3)
+		    .encode_long(f->srcGroup)
+		    .encode_long(f->dstGroup)
+		    .encode_long(f->action);
 	}
     }
 
@@ -688,7 +674,7 @@ DF_Store::connection::erl_insert(int arity)
     ClientKey key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
-    clients.insert(value->id(), value);
+    clients[value->id()] = value;
     click_chatter("insert client: %08x, %p\n", value->id(), value);
 
     DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);

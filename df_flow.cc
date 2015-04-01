@@ -9,6 +9,10 @@
 
 CLICK_DECLS
 
+#define SLOTS_PER_FLOW_HASH 4              // should be power of 2
+
+IdManager flow_ids;
+
 FlowData::FlowData(const Packet *p)
 {
     const click_ip *iph = p->ip_header();
@@ -22,7 +26,7 @@ FlowData::FlowData(const Packet *p)
     src_port = udph->uh_sport;
     dst_port = udph->uh_dport;
 
-    click_chatter("FlowData: %s\n", unparse().c_str());
+    click_chatter("FlowData(%p - %d): %s\n", this, sizeof(*this), unparse().c_str());
 }
 
 StringAccum& FlowData::unparse(StringAccum& sa) const
@@ -38,94 +42,45 @@ String FlowData::unparse() const
     return sa.take_string();
 }
 
-Flow::Flow(const Packet *p, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
- : data(FlowData(p))
+void
+Flow::make_id()
 {
-    _id = hash();
-    click_chatter("FlowData: %s hashed to %08x\n", data.unparse().c_str(), _id);
+    click_chatter("Flow make_id: %ld\n", (UINT32_MAX / SLOTS_PER_FLOW_HASH));
 
-    srcFlow = this;
-    client = client_;
-    srcGroup = srcGroup_;
-    dstGroup = dstGroup_;
-    action = action_;
-    _count = 0;
-    _count_valid = false;
-}
-
-Flow::Flow(const Packet *p)
-  : data(FlowData(p))
-{
-    _id = hash();
-    click_chatter("FlowData: %s hashed to %08x\n", data.unparse().c_str(), _id);
-
-    srcFlow = this;
-    client = NULL;
-    srcGroup = 0;
-    dstGroup = 0;
-    action = DF_RULE_UNKNOWN;
-    _count = 0;
-    _count_valid = false;
+    _id = data.hashcode() % (UINT32_MAX / SLOTS_PER_FLOW_HASH);
+    while (!flow_ids.MarkAsUsed(_id))
+	_id++;
 }
 
 Flow::Flow(const FlowData &fd, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
-  : data(fd)
+    : data(fd), client(client_),
+      srcGroup(srcGroup_), dstGroup(dstGroup_),
+      action(action_)
 {
-    _id = hash();
-    click_chatter("FlowData: %s hashed to %08x\n", data.unparse().c_str(), _id);
+    click_chatter("Flow: data: %p, client: (%p): %p, client (%p) %p\n", &data, &client, client, &client_, client_);
+    if (client)
+	click_chatter("Client: %d\n", *(char *)client);
 
-    srcFlow = this;
-    client = client_;
-    srcGroup = srcGroup_;
-    dstGroup = dstGroup_;
-    action = action_;
-    _count = 0;
-    _count_valid = false;
+    make_id();
+    click_chatter("Flow: %s hashed to %08x\n", unparse().c_str(), _id);
+
 }
 
-Flow * FlowHashEntry::get(Flow *f) {
-    for (FlowVector::const_iterator it = fv.begin(); it != fv.end(); ++it) {
-        if (*(*it) == *f)
-            return (*it);
-    }
-    return NULL;
+
+
+StringAccum& Flow::unparse(StringAccum& sa) const
+{
+    sa << _id << ": " << data << " : " << "(" << (void *)client << ")" << srcGroup << ":" << dstGroup << " -> " << action;
+    return sa;
 }
 
-Flow * FlowHashEntry::get(uint32_t count) {
-    for (FlowVector::const_iterator it = fv.begin(); it != fv.end(); ++it) {
-        if ((*it)->_count == count)
-            return (*it);
-    }
-    return NULL;
-}
-
-void FlowHashEntry::add(Flow *f, bool check) {
-    if(check) {
-        if(get(f))
-            return;
-    }
-
-    fv.push_back(f);
-    f->_count = ids.AllocateId();
-    f->_count_valid = true;
-
-    return;
-}
-
-Flow * FlowHashEntry::remove(Flow *f) {
-    Flow * tmpf;
-    for (FlowVector::iterator it = fv.begin(); it != fv.end(); ++it) {
-        if ((*it) == f) {
-            tmpf = *(fv.erase(it));
-            ids.FreeId(tmpf->_count);
-            tmpf->_count_valid = false;
-        }
-    }
-
-    return NULL;
+String Flow::unparse() const
+{
+    StringAccum sa;
+    sa << *this;
+    return sa.take_string();
 }
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(Flow)
 ELEMENT_PROVIDES(FlowData)
-ELEMENT_PROVIDES(FlowHashEntry)

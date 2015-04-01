@@ -30,26 +30,21 @@ DF_GetFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 DF_GetFlow::simple_action(Packet *p)
 {
-    Flow f = Flow(p);
-    Flow *real_flow = _store->lookup_flow(&f);
+    FlowData fd = FlowData(p);
+    Flow *f = _store->lookup_flow(fd);
 
-    click_chatter("%s: flow %s : %p\n", declaration().c_str(), f.data.unparse().c_str(), real_flow);
+    click_chatter("%s: flow %s : %p\n", declaration().c_str(), fd.unparse().c_str(), f);
 
-    if(!real_flow) { // unknown flow
-        SET_FLOW_ANNO(p, f._id);
-        SET_ACTION_ANNO(p, DF_RULE_UNKNOWN);
-
-        return p;
+    if (!f) { // unknown flow
+	SET_ACTION_ANNO(p, DF_RULE_UNKNOWN);
+	return p;
     }
 
-    assert(f._id == real_flow->_id);
-
-    SET_GROUP_SRC_ANNO(p, real_flow->srcGroup);
-    SET_GROUP_DST_ANNO(p, real_flow->dstGroup);
-    SET_CLIENT_ANNO(p, real_flow->client->id());
-    SET_FLOW_ANNO(p, real_flow->_id);
-    SET_FLOW_COUNT_ANNO(p, real_flow->_count);
-    SET_ACTION_ANNO(p, real_flow->action);
+    SET_GROUP_SRC_ANNO(p, f->srcGroup);
+    SET_GROUP_DST_ANNO(p, f->dstGroup);
+    SET_CLIENT_ANNO(p, f->client_id());
+    SET_FLOW_ANNO(p, f->id());
+    SET_ACTION_ANNO(p, f->action);
 
     return p;
 }

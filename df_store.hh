@@ -32,10 +32,9 @@ public:
     void selected(int fd, int mask);
 
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
-    Flow *lookup_flow(Flow *f) const;
-    Flow *lookup_flow(uint32_t flow_id, uint32_t count) const;
+    Flow *lookup_flow(const FlowData &fd) const;
     void set_flow(Flow *f);
-    ClientValue * lookup_client(uint32_t id_) const;
+    ClientValue *lookup_client(uint32_t id_) const;
 
 private:
     int _listen_fd;
@@ -104,7 +103,7 @@ private:
 
 	// Clients
 	ClientKey decode_client_key();
-	ClientValue *decode_client_value(ClientKey key);
+	ClientValue * decode_client_value(ClientKey key);
 
 	void decode_client();
 	void decode_clients();

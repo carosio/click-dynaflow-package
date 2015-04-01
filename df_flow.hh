@@ -1,7 +1,7 @@
 #ifndef DF_FLOW_HH
 #define DF_FLOW_HH
 #include <click/packet.hh>
-#include <click/bighashmap.hh>
+#include <click/hashtable.hh>
 #include <click/vector.hh>
 #include "df.hh"
 #include "df_clients.hh"
@@ -9,6 +9,8 @@
 #include "jhash.hh"
 
 CLICK_DECLS
+
+extern IdManager flow_ids;
 
 struct __attribute__ ((__packed__)) FlowData {
     uint32_t src_ipv4;
@@ -22,7 +24,7 @@ struct __attribute__ ((__packed__)) FlowData {
         src_ipv4(src_ipv4_), dst_ipv4(dst_ipv4_), src_port(src_port_), dst_port(dst_port_), proto(proto_) {};
 
     inline const FlowData reverse() const { return FlowData(dst_ipv4, src_ipv4, dst_port, src_port, proto); };
-    inline bool operator==(FlowData other) { return (src_ipv4 == other.src_ipv4)
+    inline bool operator==(FlowData other) const { return (src_ipv4 == other.src_ipv4)
                                              && (dst_ipv4 == other.dst_ipv4)
                                              && (src_port == other.src_port)
                                              && (dst_port == other.dst_port)
@@ -30,6 +32,10 @@ struct __attribute__ ((__packed__)) FlowData {
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
+
+    inline hashcode_t hashcode() const {
+	return jhash(this, sizeof(FlowData), 0);
+    };
 };
 
 inline StringAccum&
@@ -38,52 +44,47 @@ operator<<(StringAccum& sa, const FlowData& entry)
     return entry.unparse(sa);
 }
 
-struct Flow {
+class Flow {
+private:
     FlowData data;
-    Flow *srcFlow;
+    ClientValue *client;
 
-    Flow(const Packet *, ClientValue *, uint32_t, uint32_t, DF_RuleAction);
-    Flow(const Packet *);
+public:
     Flow(const FlowData &, ClientValue *, uint32_t, uint32_t, DF_RuleAction);
+    Flow(const Packet *p, ClientValue *client_, uint32_t srcGroup_, uint32_t dstGroup_, DF_RuleAction action_)
+	: Flow(FlowData(p), client_, srcGroup_, dstGroup_, action_) {};
+    Flow(const Packet *p) : Flow(p, NULL, 0, 0, DF_RULE_UNKNOWN) {};
+    Flow(const FlowData &fd) : Flow(fd, NULL, 0, 0, DF_RULE_UNKNOWN) {};
     ~Flow() {};
 
-    inline bool operator==(Flow other) { return data == other.data; };
-    inline uint32_t src_id() { return srcFlow->_id; };
-    inline uint32_t hash() {
-	return jhash(&data, sizeof(FlowData), 0);
-    };
-    inline Flow * reverse() { return new Flow(data.reverse(),
-					      client, srcGroup, dstGroup, action); };
+    inline bool operator==(Flow other) const { return data == other.data; };
 
-    ClientValue *client;
+    inline uint32_t id() const { return _id; };
+    inline uint32_t client_id() const { return client ? client->id() : 0; };
+
+    inline const FlowData origin()  const { return data; };
+    inline const FlowData reverse() const { return data.reverse(); };
+
+    StringAccum& unparse(StringAccum& sa) const;
+    String unparse() const;
+
     uint32_t srcGroup;
     uint32_t dstGroup;
     DF_RuleAction action;
     uint32_t _id;
-    uint32_t _count;
-    bool _count_valid;
-};
 
-typedef Vector<Flow *> FlowVector;
 
-class FlowHashEntry {
-  public:
-
-    FlowHashEntry() {};
-    ~FlowHashEntry() {};
-
-    Flow * get(Flow *f);
-    Flow * get(uint32_t count);
-    void add(Flow *f, bool check=true);
-    Flow * remove(Flow *f);
-
-    FlowVector &get_flows() { return fv; };
 private:
-    FlowVector fv;
-    IdManager ids;
+    void make_id();
 };
 
-typedef HashMap<uint32_t, FlowHashEntry *> FlowTable;
+inline StringAccum&
+operator<<(StringAccum& sa, const Flow& f)
+{
+    return f.unparse(sa);
+}
+
+typedef HashTable<FlowData, Flow *> FlowTable;
 
 CLICK_ENDDECLS
 #endif

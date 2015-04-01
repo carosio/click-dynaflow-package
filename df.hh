@@ -27,12 +27,7 @@
 #define FLOW_ANNO(p)                    ((p)->anno_u32(FLOW_ANNO_OFFSET))
 #define SET_FLOW_ANNO(p, v)             ((p)->set_anno_u32(FLOW_ANNO_OFFSET, (v)))
 
-#define FLOW_COUNT_ANNO_OFFSET          32
-#define FLOW_COUNT_ANNO_SIZE            4
-#define FLOW_COUNT_ANNO(p)              ((p)->anno_u32(FLOW_COUNT_ANNO_OFFSET))
-#define SET_FLOW_COUNT_ANNO(p, v)       ((p)->set_anno_u32(FLOW_COUNT_ANNO_OFFSET, (v)))
-
-#define ACTION_ANNO_OFFSET              36
+#define ACTION_ANNO_OFFSET              32
 #define ACTION_ANNO_SIZE                1
 #define ACTION_ANNO(p)                  ((p)->anno_u8(ACTION_ANNO_OFFSET))
 #define SET_ACTION_ANNO(p, v)           ((p)->set_anno_u8(ACTION_ANNO_OFFSET, (v)))

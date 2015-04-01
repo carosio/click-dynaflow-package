@@ -2,7 +2,7 @@
 #define DF_CLIENTS_HH
 #include <click/element.hh>
 #include <click/hashcontainer.hh>
-#include <click/bighashmap.hh>
+#include <click/hashtable.hh>
 #include <click/straccum.hh>
 #include "uniqueid.hh"
 #include "df.hh"
@@ -37,24 +37,15 @@ struct NATTranslation {
 typedef HashMap<IPAddress, NATTranslation> NATTable;
 
 struct ClientKey {
-private:
-    uint32_t _id;
-
 public:
     int type;
     IPAddress addr;
 
     inline ClientKey() { type = 0; };
     ClientKey(int type_, IPAddress addr_) :
-	type(type_), addr(addr_) { _id = addr.addr(); };
+	type(type_), addr(addr_) { };
 
-    inline bool
-    operator==(ClientKey other)
-    {
-	return addr == other.addr;
-    };
-
-    inline uint32_t hashcode() const;
+    inline bool operator==(ClientKey other) const { return addr == other.addr; };
 };
 
 struct ClientRule {
@@ -72,7 +63,7 @@ typedef Vector<ClientRule *> ClientRuleTable;
 
 struct ClientValue {
 private:
-    int _id; // ?
+    uint32_t _id;
 
 public:
     ClientKey key;
@@ -87,17 +78,10 @@ public:
 	key(key_), group(group_), nat_rules(nat_rules_), rules(rules_) {};
     ~ClientValue();
 
-    inline int id() const { return _id; };
+    inline uint32_t id() const { return _id; };
 };
 
-typedef HashMap<uint32_t, ClientValue *> ClientTable;
-
-uint32_t ClientKey::hashcode() const
-{
-    //FIXME: define hash function
-    //return 0;
-    return _id;
-}
+typedef HashTable<uint32_t, ClientValue *> ClientTable;
 
 inline StringAccum&
 operator<<(StringAccum& sa, const NATTranslation& translation)
