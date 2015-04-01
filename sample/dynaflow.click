@@ -70,49 +70,6 @@ intern_arp_class[0] -> ARPResponder(intern)     // ARP queries
 intern_arp_class[1] -> [1]intern_arpq;          // ARP responses
 intern_arp_class[3] -> Discard;
 
-// DynaFlow
-
-// intern -> extern
-
-intern_src_MAC :: DF_GetGroupMAC(dfs, src, src);
-intern_src_IP :: DF_GetGroupIP(dfs, -1, src, true, IP src);
-intern_src_IP[1] -> Discard;										// We don't know the source IP, discard the packet
-
-policy_from_intern :: DF_GetFlow(dfs)
-      -> intern_PEF_1st :: DF_PEFSwitch(unknown, else)
-      -> intern_src_MAC => (										// We don't have a flow, check if we know the source MAC
-       	 input[0] -> output;
-	 input[1] -> intern_src_IP -> output								// We don't know the source MAC, try to check the source IP
-      )
-      -> intern_dst_classify :: DF_GetGroupIP(dfs, -1, dst, IP dst)					// Check if we know the destination IP
-      -> DF_SetAction(dfs)
-      -> DF_SaveAnno(dfs)										// Now, that we know the Src and Dst group, store the annontation
-      -> intern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, else);			//    and apply the Policy
-
-intern_PEF_1st[1] -> intern_PEF;									// Else
-
-intern_dst_classify[1] -> Discard;
-
-intern_Deny :: Discard;     										// TODO: reply with ICMP Error
-
-intern_noaction :: Discard;     									// TODO: WTF?
-intern_unknown :: Discard;     										// TODO: WTF?
-
-intern_PEF[0] -> [0]rt;											// Accept   -> continue with Forwarding
-intern_PEF[1] -> Discard;										// Drop     -> discard the packet
-intern_PEF[2] -> intern_Deny;										// Deny     -> return ICMP Error - Admin Prohibited
-intern_PEF[3] -> intern_unknown;									// Unknown  -> try to find client
-intern_PEF[4] -> intern_noaction;									// NoAction -> WTF?
-intern_PEF[5] -> Discard;										// Else
-
-intern_arp_class[2] -> Strip(14)
-        -> CheckIPHeader
-	-> policy_from_intern;
-
-// extern -> intern
-
-extern_Deny :: Discard;     										// TODO: reply with ICMP Error
-
 // output on interface INTERN
 out1 :: DropBroadcasts
       -> gio1 :: IPGWOptions(intern)
@@ -131,6 +88,48 @@ out2 :: DropBroadcasts
       -> fr2 :: IPFragmenter(1500)
       -> [0]extern_arpq
       -> extern_dev;
+
+// DynaFlow
+
+// intern -> extern
+
+intern_Deny :: ICMPError(intern, unreachable, 13) -> [0]out1;
+
+intern_unknown :: Discard;										// TODO: Queueu to Control Element
+
+intern_src_MAC :: DF_GetGroupMAC(dfs, src, src);
+intern_src_IP :: DF_GetGroupIP(dfs, -1, src, true, IP src);
+intern_src_IP[1] -> intern_unknown;									// We don't know the source IP, handle in unknown element
+
+policy_from_intern :: DF_GetFlow(dfs)
+      -> intern_PEF_1st :: DF_PEFSwitch(unknown, else)
+      -> intern_src_MAC => (										// We don't have a flow, check if we know the source MAC
+       	 input[0] -> output;
+	 input[1] -> intern_src_IP -> output								// We don't know the source MAC, try to check the source IP
+      )
+      -> intern_dst_classify :: DF_GetGroupIP(dfs, -1, dst, IP dst)					// Check if we know the destination IP
+      -> DF_SetAction(dfs)
+      -> DF_SaveAnno(dfs)										// Now, that we know the Src and Dst group, store the annontation
+      -> intern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, else);			//    and apply the Policy
+
+intern_PEF_1st[1] -> intern_PEF;									// Else
+
+intern_dst_classify[1] -> intern_unknown;								// We don't know the destination IP, handle in unknown element
+
+intern_PEF[0] -> [0]rt;											// Accept   -> continue with Forwarding
+intern_PEF[1] -> Discard;										// Drop     -> discard the packet
+intern_PEF[2] -> intern_Deny;										// Deny     -> return ICMP Error - Admin Prohibited
+intern_PEF[3] -> intern_unknown;									// Unknown  -> try to find client
+intern_PEF[4] -> intern_Deny;										// NoAction -> TODO: WTF ?
+intern_PEF[5] -> intern_Deny;										// Else     -> TODO: What ?
+
+intern_arp_class[2] -> Strip(14)
+        -> CheckIPHeader
+	-> policy_from_intern;
+
+// extern -> intern
+
+extern_Deny :: ICMPError(extern, unreachable, 13) -> [0]out1;
 
 policy_to_intern :: DF_GetFlow(dfs)
       -> extern_PEF_1st :: DF_PEFSwitch(unknown, else)
@@ -174,8 +173,8 @@ extern_unknown :: Discard;
 extern_PEF[0] -> out1;											// Accept   -> continue with Forwarding
 extern_PEF[1] -> Discard;										// Drop     -> discard the packet
 extern_PEF[2] -> extern_Deny;										// Deny     -> return ICMP Error - Admin Prohibited
-extern_PEF[3] -> extern_unknown;										// Unknown  -> try to find client
-extern_PEF[4] -> extern_noaction;									// NoAction -> WTF?
+extern_PEF[3] -> extern_unknown;									// Unknown  -> TODO: should we try to find client?
+extern_PEF[4] -> extern_noaction;									// NoAction -> TODO: WTF?
 extern_PEF[5] -> Discard;										// Else
 
 extern_arp_class[2] -> Strip(14)
