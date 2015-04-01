@@ -40,6 +40,8 @@ public:
 
     void expire_flows();
 
+    void notify_packet_in(const Packet *p);
+
 private:
     int _listen_fd;
     ei_cnode ec;
@@ -133,6 +135,10 @@ private:
 	void handle_gen_call(const String to);
 	void handle_gen_cast(const String to);
 	void handle_msg(const String to);
+
+    public:
+	// Notifies
+	void notify_packet_in(const Packet *);
     };
     Vector<connection *> _conns;
 

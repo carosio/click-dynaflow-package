@@ -260,6 +260,13 @@ DF_Store::delete_flow(Flow *f)
     delete f;
 }
 
+void DF_Store::notify_packet_in(const Packet *p)
+{
+    for (Vector<connection *>::iterator it = _conns.begin(); it != _conns.end(); ++it)
+        if (*it)
+	    (*it)->notify_packet_in(p);
+}
+
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
 				 DF_Store *store_,
 				 ClientTable &clients_,
@@ -874,6 +881,29 @@ DF_Store::connection::handle_msg(const String to)
 }
 
 void
+DF_Store::connection::notify_packet_in(const Packet *p)
+{
+    int r __attribute__((unused));
+
+    if (debug)
+	click_chatter("Packet-In: %p\n", p);
+
+    x_out.reset();
+    x_out.encode_version();
+    x_out.encode_tuple_header(2)
+	.encode_atom("packet_in")
+	.encode_binary(p->data(), p->length());
+
+    if (debug)
+	click_chatter("Notify-Out: %s\n", x_out.unparse(0).c_str());
+
+    r = ei_send(fd, &bind_pid, x_out.buffer()->buff, x_out.buffer()->index);
+
+    if (debug)
+	click_chatter("send ret: %d", r);
+}
+
+void
 DF_Store::connection::read()
 {
     erlang_msg msg;
@@ -948,7 +978,7 @@ DF_Store::selected(int fd, int)
         remove_select(conn->fd, SELECT_READ | SELECT_WRITE);
         close(conn->fd);
 	click_chatter("%s: closed connection %d", declaration().c_str(), fd);
-        _conns[conn->fd] = 0;
+        _conns[conn->fd] = NULL;
         delete conn;
     }
 }
