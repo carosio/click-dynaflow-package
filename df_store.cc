@@ -16,8 +16,10 @@
 IdManager group_ids;
 
 DF_Store::DF_Store()
-    : _listen_fd(-1), cookie("secret"), node_name("click-dp")
+    : _listen_fd(-1), cookie("secret"), node_name("click-dp"),
+      _gc_timer(gc_timer_hook, this)
 {
+    _gc_interval_sec = 30;
 }
 
 DF_Store::~DF_Store()
@@ -144,6 +146,11 @@ DF_Store::initialize(ErrorHandler *errh)
 	return initialize_socket_error(errh, "listen");
 
     add_select(_listen_fd, SELECT_READ);
+
+    _gc_timer.initialize(this);
+    if (_gc_interval_sec)
+        _gc_timer.schedule_after_sec(_gc_interval_sec);
+
     return 0;
 }
 
@@ -166,6 +173,34 @@ DF_Store::cleanup(CleanupStage)
             close((*it)->fd);
             delete *it;
         }
+}
+
+void
+DF_Store::expire_flows()
+{
+    Vector<Flow *> expired;
+
+    click_chatter("%s: expire_flows: %ld\n", declaration().c_str(), click_jiffies());
+
+    for (FlowTable::iterator it = flows.begin(); it != flows.end(); ++it) {
+	if (it.value()->is_expired() && !it.value()->deleted) {
+	    it.value()->deleted = true;
+	    expired.push_back(it.value());
+	}
+    }
+
+    for (Vector<Flow *>::const_iterator it = expired.begin(); it != expired.end(); ++it) {
+	delete_flow(*it);
+    }
+}
+
+void
+DF_Store::gc_timer_hook(Timer *t, void *user_data)
+{
+    DF_Store *store = static_cast<DF_Store *>(user_data);
+    store->expire_flows();
+    if (store->_gc_interval_sec)
+        t->reschedule_after_sec(store->_gc_interval_sec);
 }
 
 DF_GroupEntryIP *
@@ -193,10 +228,16 @@ DF_Store::lookup_client(uint32_t id_) const
 }
 
 Flow *
-DF_Store::lookup_flow(const FlowData &fd) const
+DF_Store::lookup_flow(const FlowData &fd)
 {
     Flow *f = flows.get(fd);
     click_chatter("%s: lookup_flow f: %p\n", declaration().c_str(), f);
+
+    if (f && f->is_expired()) {
+	delete_flow(f);
+	return NULL;
+    }
+
     return f;
 }
 
@@ -207,6 +248,16 @@ DF_Store::set_flow(Flow *f)
 
     flows[f->origin()] = f;
     flows[f->reverse()] = f;
+}
+
+void
+DF_Store::delete_flow(Flow *f)
+{
+    click_chatter("%s: delete_flow %08x -> %p\n", declaration().c_str(), f->id(), f);
+
+    flows.erase(f->origin());
+    flows.erase(f->reverse());
+    delete f;
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
@@ -602,9 +653,17 @@ DF_Store::connection::dump_clients()
     x_out.encode_empty_list();
 }
 
+#define jiffies_diff(a, b) ({			\
+	    __typeof__(a) _a = (a);		\
+	    __typeof__(b) _b = (b);		\
+	    _a > _b ? (click_jiffies_difference_t)(_a - _b) : -(click_jiffies_difference_t)(_b - _a); \
+	})
+
 void
 DF_Store::connection::dump_flows()
 {
+    click_jiffies_t now = click_jiffies();
+
     for (FlowTable::const_iterator it = flows.begin(); it != flows.end(); ++it) {
 	const FlowData &k = it.key();
 	const Flow *f = it.value();
@@ -612,7 +671,7 @@ DF_Store::connection::dump_flows()
 	if (f) {
 	    x_out.encode_list_header(1);
 
-	    x_out.encode_tuple_header(3)
+	    x_out.encode_tuple_header(4)
 		.encode_long(f->id())
 		// {Proto, {SrcIPv4, SrcPort}, {DstIPv4, DstPort}}
 		.encode_tuple_header(3)
@@ -627,7 +686,8 @@ DF_Store::connection::dump_flows()
 		.encode_tuple_header(3)
 		    .encode_long(f->srcGroup)
 		    .encode_long(f->dstGroup)
-		    .encode_long(f->action);
+		    .encode_long(f->action)
+		.encode_long(jiffies_diff(f->_expiry, now) * (1000 / CLICK_HZ));
 	}
     }
 

@@ -68,12 +68,17 @@ public:
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
 
+    void reset_timeout();
+    bool is_expired() const;
+
     uint32_t srcGroup;
     uint32_t dstGroup;
     DF_RuleAction action;
     uint32_t _id;
 
+    click_jiffies_t _expiry;
 
+    bool deleted = false;
 private:
     void make_id();
 };

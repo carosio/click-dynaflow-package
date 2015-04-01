@@ -9,6 +9,7 @@
 
 CLICK_DECLS
 
+#define TIMEOUT 30
 #define SLOTS_PER_FLOW_HASH 4              // should be power of 2
 
 IdManager flow_ids;
@@ -64,9 +65,18 @@ Flow::Flow(const FlowData &fd, ClientValue *client_, uint32_t srcGroup_, uint32_
     make_id();
     click_chatter("Flow: %s hashed to %08x\n", unparse().c_str(), _id);
 
+    reset_timeout();
 }
 
+bool Flow::is_expired() const
+{
+    return click_jiffies() > _expiry;
+}
 
+void Flow::reset_timeout()
+{
+    _expiry = click_jiffies() + (TIMEOUT * CLICK_HZ);
+}
 
 StringAccum& Flow::unparse(StringAccum& sa) const
 {

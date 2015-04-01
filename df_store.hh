@@ -1,5 +1,6 @@
 #ifndef DF_STORE_HH
 #define DF_STORE_HH
+#include <click/timer.hh>
 #include <click/element.hh>
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
@@ -32,9 +33,12 @@ public:
     void selected(int fd, int mask);
 
     DF_GroupEntryIP *lookup_group_ip(uint32_t addr) const;
-    Flow *lookup_flow(const FlowData &fd) const;
+    Flow *lookup_flow(const FlowData &fd);
     void set_flow(Flow *f);
+    void delete_flow(Flow *f);
     ClientValue *lookup_client(uint32_t id_) const;
+
+    void expire_flows();
 
 private:
     int _listen_fd;
@@ -48,6 +52,11 @@ private:
     GroupTableMAC mac_groups;
 
     FlowTable flows;
+
+    uint32_t _gc_interval_sec;
+    Timer _gc_timer;
+
+    static void gc_timer_hook(Timer *t, void *user_data);
 
 public:
     ClientTable clients;
