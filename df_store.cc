@@ -247,7 +247,8 @@ DF_Store::set_flow(Flow *f)
     click_chatter("%s: set_flow %08x -> %p\n", declaration().c_str(), f->id(), f);
 
     flows[f->origin()] = f;
-    flows[f->reverse()] = f;
+    if (f->is_reversible())
+	flows[f->reverse()] = f;
 }
 
 void
@@ -256,7 +257,8 @@ DF_Store::delete_flow(Flow *f)
     click_chatter("%s: delete_flow %08x -> %p\n", declaration().c_str(), f->id(), f);
 
     flows.erase(f->origin());
-    flows.erase(f->reverse());
+    if (f->is_reversible())
+	flows.erase(f->reverse());
     delete f;
 }
 

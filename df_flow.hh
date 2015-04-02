@@ -1,8 +1,11 @@
 #ifndef DF_FLOW_HH
 #define DF_FLOW_HH
+#include <clicknet/icmp.h>
+
 #include <click/packet.hh>
 #include <click/hashtable.hh>
 #include <click/vector.hh>
+#include "ei.hh"
 #include "df.hh"
 #include "df_clients.hh"
 #include "uniqueid.hh"
@@ -12,30 +15,78 @@ CLICK_DECLS
 
 extern IdManager flow_ids;
 
-struct __attribute__ ((__packed__)) FlowData {
-    uint32_t src_ipv4;
-    uint32_t dst_ipv4;
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint8_t proto;
+struct FlowData {
+private:
+    static constexpr uint8_t invmap[ICMP_MASKREQREPLY + 1] = {
+	ICMP_ECHO + 1,                          //  0 = ICMP_ECHOREPLY
+	0, 0, 0, 0, 0, 0, 0,
+	ICMP_ECHOREPLY + 1,                     //  8 = ICMP_ECHO
+	0, 0, 0, 0,
+	ICMP_TSTAMPREPLY + 1,                   // 13 = ICMP_TIMESTAMP
+	ICMP_TSTAMP + 1,                        // 14 = ICMP_TIMESTAMPREPLY
+	ICMP_IREQREPLY + 1,                     // 15 = ICMP_INFO_REQUEST
+	ICMP_IREQ + 1,                          // 16 = ICMP_INFO_REPLY
+	ICMP_MASKREQREPLY + 1,                  // 17 = ICMP_ADDRESS
+	ICMP_MASKREQ + 1                        // 18 = ICMP_ADDRESSREPLY
+    };
 
+protected:
+    struct flow_endp_tuple {
+	union {
+	    in_addr_t   v4;
+	    in6_addr    v6;
+	} a;
+	union {
+	    uint16_t all;
+
+	    struct {
+		uint16_t port;
+	    } tcp;
+	    struct {
+		uint16_t port;
+	    } udp;
+	    struct {
+		uint8_t type, code;
+	    } icmp;
+	    struct {
+		uint16_t port;
+	    } dccp;
+	    struct {
+		uint16_t port;
+	    } sctp;
+	    struct {
+		uint16_t key;
+	    } gre;
+	} u;
+    };
+
+    struct flow_tuple {
+	uint8_t protonum;
+	struct flow_endp_tuple src;
+	struct flow_endp_tuple dst;
+    } data;
+
+private:
+    FlowData(uint8_t protonum, const struct flow_endp_tuple &, const struct flow_endp_tuple &);
+
+public:
     FlowData(const Packet *p);
-    FlowData(uint32_t src_ipv4_, uint32_t dst_ipv4_, uint16_t src_port_, uint16_t dst_port_, uint8_t proto_):
-        src_ipv4(src_ipv4_), dst_ipv4(dst_ipv4_), src_port(src_port_), dst_port(dst_port_), proto(proto_) {};
 
-    inline const FlowData reverse() const { return FlowData(dst_ipv4, src_ipv4, dst_port, src_port, proto); };
-    inline bool operator==(FlowData other) const { return (src_ipv4 == other.src_ipv4)
-                                             && (dst_ipv4 == other.dst_ipv4)
-                                             && (src_port == other.src_port)
-                                             && (dst_port == other.dst_port)
-                                             && (proto == other.proto); };
+    bool is_reversible() const;
+    FlowData reverse() const;
+
+    inline bool operator==(const FlowData other) const {
+	return memcmp(&data, &other.data, sizeof(data) == 0);
+    };
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
 
     inline hashcode_t hashcode() const {
-	return jhash(this, sizeof(FlowData), 0);
+	return jhash(&data, sizeof(data), 0);
     };
+
+    friend ei_x &operator<<(ei_x &x, const FlowData &fd);
 };
 
 inline StringAccum&
@@ -64,6 +115,7 @@ public:
 
     inline const FlowData origin()  const { return data; };
     inline const FlowData reverse() const { return data.reverse(); };
+    inline const bool is_reversible() const { return data.is_reversible(); };
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
@@ -90,6 +142,10 @@ operator<<(StringAccum& sa, const Flow& f)
 }
 
 typedef HashTable<FlowData, Flow *> FlowTable;
+
+ei_x &operator<<(ei_x &x, const FlowData &fd);
+ei_x &operator<<(ei_x &x, const Flow &f);
+ei_x &operator<<(ei_x &x, const FlowTable &f);
 
 CLICK_ENDDECLS
 #endif
