@@ -4,6 +4,7 @@
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include "ei.hh"
 #include "df_clients.hh"
 #include "df_grouptable.hh"
 
@@ -56,7 +57,15 @@ private:
     IPAddress _addr;
     IPAddress _prefix;
     ClientValue *_client;
+
+    friend ei_x &operator<<(ei_x &x, const DF_GroupEntryIP &e);
 };
+
+inline StringAccum&
+operator<<(StringAccum& sa, const DF_GroupEntryIP& entry)
+{
+    return entry.unparse(sa);
+}
 
 typedef Vector<DF_GroupEntryIP *> GroupTableIP;
 
@@ -87,11 +96,8 @@ private:
     bool _is_client;
 };
 
-inline StringAccum&
-operator<<(StringAccum& sa, const DF_GroupEntryIP& entry)
-{
-    return entry.unparse(sa);
-}
+
+ei_x &operator<<(ei_x &x, const DF_GroupEntryIP &e);
 
 CLICK_ENDDECLS
 #endif

@@ -121,8 +121,6 @@ private:
 
 	// Dump Handler
 	void dump_groups();
-	void dump_clients();
-	void dump_flows();
 
 	// Erlang call handler
 	void erl_bind(int arity);

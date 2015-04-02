@@ -398,7 +398,7 @@ DF_Store::connection::decode_nat_translation(const String type_atom)
 	throw ei_badarg();
     }
 
-    return NATTranslation(type, nat_addr, min_port, max_port);
+    return NATTranslation(static_cast<NATTranslation::Type>(type), nat_addr, min_port, max_port);
 }
 
 void
@@ -446,42 +446,6 @@ DF_Store::connection::decode_nat_list()
     } while (arity-- > 0);
 
     return nat_rules;
-}
-
-void
-DF_Store::connection::encode_nat_list(const NATTable &rules)
-{
-     for (NATTable::const_iterator it = rules.begin(); it != rules.end(); ++it) {
-	 x_out.encode_list_header(1)
-	     .encode_tuple_header(3)
-	     .encode_ipaddress(it.key())
-	     .encode_atom(NATTranslation::Translations[it.value().type]);
-
-	 switch (it.value().type) {
-	 case NATTranslation::SymetricAddressKeyed:
-	 case NATTranslation::AddressKeyed:
-	     x_out.encode_ipaddress(it.value().nat_addr);
-	     break;
-
-	 case NATTranslation::PortKeyed:
-	     x_out.encode_tuple_header(3)
-		 .encode_ipaddress(it.value().nat_addr)
-		 .encode_long(it.value().min_port)
-		 .encode_long(it.value().max_port);
-	     break;
-
-	 case NATTranslation::Random:
-	 case NATTranslation::RandomPersistent:
-	 case NATTranslation::Masquerade:
-	     x_out.encode_atom("undefined");
-	     break;
-
-	 default:
-	     x_out.encode_long(it.value().type);
-	     break;
-	 }
-     }
-     x_out.encode_empty_list();
 }
 
 void
@@ -535,19 +499,6 @@ DF_Store::connection::decode_client_rules_list()
     } while (arity-- > 0);
 
     return rules;
-}
-
-void
-DF_Store::connection::encode_client_rules_list(const ClientRuleTable &rules)
-{
-    for (ClientRuleTable::const_iterator it = rules.begin(); it != rules.end(); ++it) {
-	x_out.encode_list_header(1)
-	    .encode_tuple_header(3)
-	    .encode_long((*it)->src)
-	    .encode_long((*it)->dst)
-	    .encode_atom(ClientRule::ActionType[(*it)->out]);
-    }
-    x_out.encode_empty_list();
 }
 
 // Value: {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}
@@ -620,85 +571,12 @@ void
 DF_Store::connection::dump_groups()
 {
     for (GroupTableMAC::const_iterator it = mac_groups.begin(); it != mac_groups.end(); ++it) {
-	x_out.encode_list_header(1);
-	x_out.encode_atom("ok");
+	x_out << list(1) << **it;
     }
     for (GroupTableIP::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
-	x_out.encode_list_header(1)
-	    .encode_tuple_header(2);
-
-	x_out.encode_tuple_header(2)
-	    .encode_ipaddress((*it)->addr())
-	    .encode_long((*it)->prefix_len());
-
-	x_out.encode_long((*it)->id());
+	x_out << list(1) << **it;
     }
-    x_out.encode_empty_list();
-}
-
-
-void
-DF_Store::connection::dump_clients()
-{
-    for (ClientTable::const_iterator it = clients.begin(); it != clients.end(); ++it) {
-	x_out.encode_list_header(1);
-
-	// {Key, Value}
-	x_out.encode_tuple_header(2);
-
-	// Key = {Type, Addr} - FIXME: only 'inet' for now
-	x_out.encode_tuple_header(2)
-	    .encode_atom("inet")
-	    .encode_binary(it.value()->key.addr.data(), 4);
-
-	// Value = {Group, NATTable, ClientRuleTable}
-	x_out.encode_tuple_header(3);
-	x_out.encode_long(it.value()->group);
-	encode_nat_list(it.value()->nat_rules);
-	encode_client_rules_list(it.value()->rules);
-    }
-    x_out.encode_empty_list();
-}
-
-#define jiffies_diff(a, b) ({			\
-	    __typeof__(a) _a = (a);		\
-	    __typeof__(b) _b = (b);		\
-	    _a > _b ? (click_jiffies_difference_t)(_a - _b) : -(click_jiffies_difference_t)(_b - _a); \
-	})
-
-void
-DF_Store::connection::dump_flows()
-{
-    click_jiffies_t now = click_jiffies();
-
-    for (FlowTable::const_iterator it = flows.begin(); it != flows.end(); ++it) {
-	const FlowData &k = it.key();
-	const Flow *f = it.value();
-
-	if (f) {
-	    x_out.encode_list_header(1);
-
-	    x_out.encode_tuple_header(4)
-		.encode_long(f->id())
-		// {Proto, {SrcIPv4, SrcPort}, {DstIPv4, DstPort}}
-		.encode_tuple_header(3)
-		    .encode_long(k.proto)
-		    .encode_tuple_header(2)
-			.encode_ipaddress(k.src_ipv4)
-			.encode_long(ntohs(k.src_port))
-		    .encode_tuple_header(2)
-			.encode_ipaddress(k.dst_ipv4)
-			.encode_long(ntohs(k.dst_port))
-		// {SourceGroup, DestinationGroup, Action}
-		.encode_tuple_header(3)
-		    .encode_long(f->srcGroup)
-		    .encode_long(f->dstGroup)
-		    .encode_long(f->action)
-		.encode_long(jiffies_diff(f->_expiry, now) * (1000 / CLICK_HZ));
-	}
-    }
-
-    x_out.encode_empty_list();
+    x_out << list;
 }
 
 // Erlang call handlers
@@ -711,7 +589,7 @@ DF_Store::connection::erl_bind(int arity)
 
     bind_pid = x_in.decode_pid();
 
-    x_out.encode_atom("ok");
+    x_out << ok;
 }
 
 void
@@ -726,7 +604,7 @@ DF_Store::connection::erl_init(int arity)
     decode_groups();
     decode_clients();
 
-    x_out.encode_atom("ok");
+    x_out << ok;
 }
 
 void
@@ -749,7 +627,7 @@ DF_Store::connection::erl_insert(int arity)
 	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
     ip_groups.push_back(ip_grp);
 
-    x_out.encode_atom("ok");
+    x_out << ok;
 }
 
 void
@@ -759,19 +637,18 @@ DF_Store::connection::erl_dump(int arity)
 	click_chatter("erl_init: %d\n", arity);
 
     if (arity == 1) {
-	x_out.encode_tuple_header(2);
+	x_out << tuple(3);
 	dump_groups();
-	dump_clients();
-	dump_flows();
+	x_out << clients << flows;
     }
     else if (arity == 2) {
 	String what = x_in.decode_atom();
 	if (what == "groups")
 	    dump_groups();
 	else if (what == "clients")
-	    dump_clients();
+	    x_out << clients;
 	else if (what == "flows")
-	    dump_flows();
+	    x_out << flows;
 	else
 	    throw ei_badarg();
     }
@@ -797,7 +674,7 @@ DF_Store::connection::handle_gen_call_click(const String fn, int arity)
 	erl_dump(arity);
     }
     else
-	x_out.encode_atom("error");
+	x_out << error;
 }
 
 void
@@ -821,23 +698,21 @@ DF_Store::connection::handle_gen_call(const String to)
 	arity = x_in.decode_tuple_header();
 	fn = x_in.decode_atom();
 
-	x_out.encode_version()
-	    .encode_tuple_header(2)
-	    .encode_ref(ref);
+	x_out << version << tuple(2) << ref;
 
 	if (to == "net_kernel" && fn ==  "is_auth") {
-	    x_out.encode_atom("yes");
+	    x_out << atom("yes");
 	}
 	else if (to == "click") {
 	    try {
 		handle_gen_call_click(fn, arity);
 	    }
 	    catch (ei_badarg &e) {
-		x_out.encode_atom("badarg");
+		x_out << badarg;
 	    }
 	}
 	else
-	    x_out.encode_atom("error");
+	    x_out << error;
 
 	if (debug)
 	    click_chatter("Msg-Out: %s\n", x_out.unparse(0).c_str());
@@ -889,10 +764,7 @@ DF_Store::connection::notify_packet_in(const Packet *p)
 	click_chatter("Packet-In: %p\n", p);
 
     x_out.reset();
-    x_out.encode_version();
-    x_out.encode_tuple_header(2)
-	.encode_atom("packet_in")
-	.encode_binary(p->data(), p->length());
+    x_out << version << tuple(2) << atom("packet_in") << p;
 
     if (debug)
 	click_chatter("Notify-Out: %s\n", x_out.unparse(0).c_str());

@@ -112,5 +112,13 @@ String DF_GroupEntryIP::unparse() const
     sa << *this;
     return sa.take_string();
 }
+
+ei_x &operator<<(ei_x &x, const DF_GroupEntryIP &e)
+{
+    x << tuple(2) << tuple(2) << binary(e._addr) << e.prefix_len()
+      << e.id();
+    return x;
+}
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DF_GetGroupIP)

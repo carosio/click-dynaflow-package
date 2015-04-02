@@ -4,6 +4,7 @@
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include "ei.hh"
 #include "df_grouptable.hh"
 
 /*
@@ -74,6 +75,8 @@ operator<<(StringAccum& sa, const DF_GroupEntryMAC& entry)
 {
     return entry.unparse(sa);
 }
+
+ei_x &operator<<(ei_x &x, const DF_GroupEntryMAC &e);
 
 CLICK_ENDDECLS
 #endif

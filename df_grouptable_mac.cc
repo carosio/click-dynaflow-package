@@ -92,5 +92,11 @@ String DF_GroupEntryMAC::unparse() const
     return sa.take_string();
 }
 
+ei_x &operator<<(ei_x &x, const DF_GroupEntryMAC &e)
+{
+    x << ok;
+    return x;
+}
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DF_GetGroupMAC)

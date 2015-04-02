@@ -5,6 +5,7 @@
 #include <click/hashtable.hh>
 #include <click/straccum.hh>
 #include "uniqueid.hh"
+#include "ei.hh"
 #include "df.hh"
 #include "df_grouptable.hh"
 
@@ -22,19 +23,36 @@ struct NATTranslation {
 		RandomPersistent,
 		Masquerade,
 		LastEntry = Masquerade};
-    unsigned int type;
+    IPAddress key;
+    Type type;
     IPAddress nat_addr;
     int min_port;
     int max_port;
 
-    inline NATTranslation() { type = min_port = max_port = 0; };
-    NATTranslation(unsigned int type_, IPAddress nat_addr_, int min_port_, int max_port_) :
+    inline NATTranslation() : type(Random), min_port(0), max_port(0) {};
+    NATTranslation(Type type_, IPAddress nat_addr_, int min_port_, int max_port_) :
 	type(type_), nat_addr(nat_addr_), min_port(min_port_), max_port(max_port_) {};
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
 };
 
+inline StringAccum&
+operator<<(StringAccum& sa, const NATTranslation& translation)
+{
+    return translation.unparse(sa);
+}
+
+ei_x &operator<<(ei_x &x, const NATTranslation &n);
+
+inline ei_x &operator<<(ei_x &x, const NATTranslation::Type t)
+{
+    x << atom(NATTranslation::Translations[t]);
+    return x;
+}
+
 typedef HashMap<IPAddress, NATTranslation> NATTable;
+
+ei_x &operator<<(ei_x &x, const NATTable &t);
 
 struct ClientKey {
 public:
@@ -81,13 +99,19 @@ public:
     inline uint32_t id() const { return _id; };
 };
 
+
 typedef HashTable<uint32_t, ClientValue *> ClientTable;
 
-inline StringAccum&
-operator<<(StringAccum& sa, const NATTranslation& translation)
+ei_x &operator<<(ei_x &x, const ClientKey &ck);
+inline ei_x &operator<<(ei_x &x, const DF_RuleAction action)
 {
-    return translation.unparse(sa);
+    x << atom(ClientRule::ActionType[action]);
+    return x;
 }
+ei_x &operator<<(ei_x &x, const ClientRule &cr);
+ei_x &operator<<(ei_x &x, const ClientRuleTable &t);
+ei_x &operator<<(ei_x &x, const ClientValue &cv);
+ei_x &operator<<(ei_x &x, const ClientTable &t);
 
 CLICK_ENDDECLS
 #endif
