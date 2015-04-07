@@ -4,21 +4,27 @@
 #include <click/hashcontainer.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include "df_clients.hh"
+
+struct ClientValue;
 
 class DF_GroupEntry {
 public:
     typedef uint32_t GroupId;
 private:
     GroupId _id;
+    ClientValue *_client;
 
 public:
-    DF_GroupEntry(GroupId id_) : _id(id_) {};
+    DF_GroupEntry(GroupId id_);
+    DF_GroupEntry(ClientValue *client_);
     virtual ~DF_GroupEntry();
 
     virtual StringAccum& unparse(StringAccum& sa) const;
     virtual String unparse() const;
 
     inline GroupId id() const { return _id; };
+    inline ClientValue *client() const { return _client; };
 
     inline bool operator==(DF_GroupEntry b) { return _id == b._id; }
 };

@@ -3,6 +3,7 @@
 
 #include <click/packet.hh>
 #include <click/ipaddress.hh>
+#include <click/etheraddress.hh>
 #include <click/string.hh>
 #include <click/straccum.hh>
 #include "ei.h"
@@ -146,6 +147,13 @@ inline _Binary binary(const void *b, int len) { return { b, len }; };
 inline ei_x &operator<<(ei_x &x, _Binary __b)
 {
     return x.encode_binary(__b.__b, __b.__len);
+};
+
+struct _EtherBinary { const EtherAddress & __addr; };
+inline _EtherBinary binary(const EtherAddress & addr) { return { addr }; };
+inline ei_x &operator<<(ei_x &x, const _EtherBinary __addr)
+{
+    return x.encode_binary(__addr.__addr.data(), 6);
 };
 
 struct _IPBinary { const IPAddress & __ip; };

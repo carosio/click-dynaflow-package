@@ -1,8 +1,7 @@
-#ifndef DF_GROUPTABLE_MAC_HH
-#define DF_GROUPTABLE_MAC_HH
+#ifndef DF_GROUPTABLE_Ether_HH
+#define DF_GROUPTABLE_Ether_HH
 #include <click/element.hh>
-#include <click/hashcontainer.hh>
-#include <click/bighashmap.hh>
+#include <click/hashtable.hh>
 #include <click/straccum.hh>
 #include "ei.hh"
 #include "df_grouptable.hh"
@@ -10,15 +9,15 @@
 /*
  * =c
  *
- * DF_GetGroupMAC(STORE, OFFSET)
+ * DF_GetGroupEther(STORE, OFFSET)
  *
  * =s ip
  *
- * try to find a DF_GetGroup for MAC address
+ * try to find a DF_GetGroup for Ether address
  *
  * =d
  *
- * Attempt to find a GroupMAC element.
+ * Attempt to find a GroupEther element.
  *
  * Reads an Ethernet address ADDR from the packet at offset OFFSET.  If OFFSET
  * is out of range, the input packet is dropped or emitted on optional output 1.
@@ -33,28 +32,31 @@
 
 class DF_Store;
 
-class DF_GroupEntryMAC: public DF_GroupEntry {
+class DF_GroupEntryEther: public DF_GroupEntry {
 public:
-  DF_GroupEntryMAC(GroupId id, IPAddress addr_, IPAddress prefix_) :
-	DF_GroupEntry(id), addr(addr_), prefix(prefix_) {};
-    ~DF_GroupEntryMAC() {};
+    DF_GroupEntryEther(ClientValue *client) :
+	DF_GroupEntry(client), _addr(client->ether()) {};
+  DF_GroupEntryEther(GroupId id, EtherAddress addr_) :
+	DF_GroupEntry(id), _addr(addr_) {};
+    ~DF_GroupEntryEther() {};
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
 
 private:
-    IPAddress addr;
-    IPAddress prefix;
+    EtherAddress _addr;
+
+    friend ei_x &operator<<(ei_x &x, const DF_GroupEntryEther &e);
 };
 
-typedef Vector<DF_GroupEntryMAC *> GroupTableMAC;
+typedef HashTable<EtherAddress, DF_GroupEntryEther *> GroupTableEther;
 
-class DF_GetGroupMAC : public Element {
+class DF_GetGroupEther : public Element {
 public:
-    DF_GetGroupMAC() CLICK_COLD;
-    ~DF_GetGroupMAC() CLICK_COLD;
+    DF_GetGroupEther() CLICK_COLD;
+    ~DF_GetGroupEther() CLICK_COLD;
 
-    const char *class_name() const	{ return "DF_GetGroupMAC"; }
+    const char *class_name() const	{ return "DF_GetGroupEther"; }
     const char *port_count() const	{ return PORTS_1_1X2; }
     const char *processing() const	{ return PROCESSING_A_AH; }
     const char *flags() const		{ return "A"; }
@@ -71,12 +73,12 @@ private:
 };
 
 inline StringAccum&
-operator<<(StringAccum& sa, const DF_GroupEntryMAC& entry)
+operator<<(StringAccum& sa, const DF_GroupEntryEther& entry)
 {
     return entry.unparse(sa);
 }
 
-ei_x &operator<<(ei_x &x, const DF_GroupEntryMAC &e);
+ei_x &operator<<(ei_x &x, const DF_GroupEntryEther &e);
 
 CLICK_ENDDECLS
 #endif

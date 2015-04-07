@@ -40,15 +40,14 @@ class DF_Store;
 class DF_GroupEntryIP: public DF_GroupEntry {
 public:
     DF_GroupEntryIP(ClientValue *client) :
-	DF_GroupEntry(client->group), _addr(client->key.addr), _prefix(IPAddress::make_prefix(32)), _client(client) {};
+	DF_GroupEntry(client), _addr(client->addr()), _prefix(IPAddress::make_prefix(32)) {};
     DF_GroupEntryIP(GroupId id, IPAddress addr_, IPAddress prefix_) :
-	DF_GroupEntry(id), _addr(addr_), _prefix(prefix_), _client(NULL) {};
+	DF_GroupEntry(id), _addr(addr_), _prefix(prefix_) {};
     ~DF_GroupEntryIP() {};
 
     inline uint32_t addr() const { return _addr; };
     inline uint32_t mask() const { return _prefix; };
     inline uint32_t prefix_len() const { return _prefix.mask_to_prefix_len(); };
-    inline ClientValue *client() const { return _client; };
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
@@ -56,7 +55,6 @@ public:
 private:
     IPAddress _addr;
     IPAddress _prefix;
-    ClientValue *_client;
 
     friend ei_x &operator<<(ei_x &x, const DF_GroupEntryIP &e);
 };

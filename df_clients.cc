@@ -54,6 +54,21 @@ String NATTranslation::unparse() const
     return sa.take_string();
 }
 
+void ClientKey::serialize(ei_x &x) const
+{
+    x << tuple(2) << atom("type") << _type;
+}
+
+void ClientKeyEther::serialize(ei_x &x) const
+{
+    x << tuple(2) << atom("ether") << binary(addr());
+}
+
+void ClientKeyIP::serialize(ei_x &x) const
+{
+    x << tuple(2) << atom("inet") << binary(addr());
+}
+
 const String ClientRule::ActionType[] = {
 	[DF_RULE_UNKNOWN]   = "unknown",
 	[DF_RULE_NO_ACTION] = "no_action",
@@ -69,8 +84,26 @@ ClientValue::ClientValue()
 
 ClientValue::~ClientValue()
 {
+    delete key;
+
     click_chatter("%p{element}: FreeId: %d\n", this, _id);
     client_ids.FreeId(_id);
+}
+
+IPAddress ClientValue::addr() const
+{
+    if (key->type() != AF_INET)
+	throw;
+
+    return dynamic_cast<ClientKeyIP *>(key)->addr();
+}
+
+EtherAddress ClientValue::ether() const
+{
+    if (key->type() != AF_PACKET)
+	throw;
+
+    return dynamic_cast<ClientKeyEther *>(key)->addr();
 }
 
 ei_x &operator<<(ei_x &x, const NATTranslation &n)
@@ -111,13 +144,6 @@ ei_x &operator<<(ei_x &x, const NATTable &t)
     return x;
 }
 
-ei_x &operator<<(ei_x &x, const ClientKey &ck)
-{
-    // {Type, Addr} - FIXME: only 'inet' for now
-    x << tuple(2) << atom("inet") << binary(ck.addr);
-    return x;
-}
-
 ei_x &operator<<(ei_x &x, const ClientRule &cr)
 {
     x << tuple(3) << cr.src << cr.dst << cr.out;
@@ -136,7 +162,7 @@ ei_x &operator<<(ei_x &x, const ClientRuleTable &t)
 ei_x &operator<<(ei_x &x, const ClientValue &cv)
 {
     // {Key, {Group, NATTable, ClientRuleTable}}
-    x << tuple(2) << cv.key
+    x << tuple(2) << *cv.key
 		  << tuple(3) << cv.group << cv.nat_rules << cv.rules;
     return x;
 }

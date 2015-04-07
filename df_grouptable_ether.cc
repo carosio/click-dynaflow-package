@@ -1,7 +1,7 @@
 #include <click/config.h>
 #include "df_store.hh"
 #include "df_grouptable.hh"
-#include "df_grouptable_mac.hh"
+#include "df_grouptable_ether.hh"
 #include "df.hh"
 #include <click/hashallocator.hh>
 #include <click/error.hh>
@@ -10,6 +10,7 @@
 #include <click/handlercall.hh>
 #include <click/bighashmap.hh>
 #include <click/straccum.hh>
+#include <click/etheraddress.hh>
 #include <fcntl.h>
 #include "ei.h"
 
@@ -17,15 +18,14 @@
 
 CLICK_DECLS
 
-DF_GetGroupMAC::DF_GetGroupMAC() {}
+DF_GetGroupEther::DF_GetGroupEther() {}
 
-DF_GetGroupMAC::~DF_GetGroupMAC() {}
+DF_GetGroupEther::~DF_GetGroupEther() {}
 
 int
-DF_GetGroupMAC::configure(Vector<String> &conf, ErrorHandler *errh)
+DF_GetGroupEther::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     DF_Store *new_store;
-    int new_offset = -1;
     String off;
     String anno;
 
@@ -59,44 +59,46 @@ DF_GetGroupMAC::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 Packet *
-DF_GetGroupMAC::simple_action(Packet *p)
+DF_GetGroupEther::simple_action(Packet *p)
 {
-    // TODO: implement
-    //
-    // lookup group and set anno or whatever....
+    EtherAddress addr = EtherAddress(p->data() + _offset);
 
-    DF_GetGroupMAC *group = NULL;
-
-    // group = _store.lookup_group_mac(p->data() + _offset);
-
+    DF_GroupEntryEther *group = _store->lookup_group_ether(addr);
     if (!group) {
+	click_chatter("%s: Ether %s -> unknown\n", declaration().c_str(), addr.unparse().c_str());
         checked_output_push(1, p);
         return 0;
     }
 
-    // implement annotation set ...
+    click_chatter("%s: Ether %s -> %s\n", declaration().c_str(), addr.unparse().c_str(), group->unparse().c_str());
+
+    ClientValue *client = group->client();
+    SET_CLIENT_ANNO(p, client->id());
+
+    click_chatter("%s: Group-Id: %08x\n", declaration().c_str(), group->id());
+    SET_GROUP_ANNO(p, _anno, group->id());
 
     return p;
 }
 
-StringAccum& DF_GroupEntryMAC::unparse(StringAccum& sa) const
+StringAccum& DF_GroupEntryEther::unparse(StringAccum& sa) const
 {
-    sa << addr.unparse_with_mask(prefix) << " -> " << id();
+    sa << _addr << " -> " << id();
     return sa;
 }
 
-String DF_GroupEntryMAC::unparse() const
+String DF_GroupEntryEther::unparse() const
 {
     StringAccum sa;
     sa << *this;
     return sa.take_string();
 }
 
-ei_x &operator<<(ei_x &x, const DF_GroupEntryMAC &e)
+ei_x &operator<<(ei_x &x, const DF_GroupEntryEther &e)
 {
-    x << ok;
+    x << tuple(2) << binary(e._addr) << e.id();
     return x;
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DF_GetGroupMAC)
+EXPORT_ELEMENT(DF_GetGroupEther)

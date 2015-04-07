@@ -20,7 +20,7 @@ DF_GetFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if (Args(conf, this, errh)
 	.read_mp("STORE", ElementCastArg("DF_Store"), new_store)
-    .complete() < 0)
+	.complete() < 0)
         return -1;
 
     _store = new_store;

@@ -4,6 +4,7 @@
 #include <click/hashcontainer.hh>
 #include <click/hashtable.hh>
 #include <click/straccum.hh>
+#include <click/etheraddress.hh>
 #include "uniqueid.hh"
 #include "ei.hh"
 #include "df.hh"
@@ -54,16 +55,62 @@ typedef HashMap<IPAddress, NATTranslation> NATTable;
 
 ei_x &operator<<(ei_x &x, const NATTable &t);
 
-struct ClientKey {
+class ClientKey {
+private:
+    int _type;
+
 public:
-    int type;
-    IPAddress addr;
+    inline ClientKey() { _type = 0; };
+    inline ClientKey(int type_) : _type(type_) {};
+    virtual ~ClientKey() {};
 
-    inline ClientKey() { type = 0; };
-    ClientKey(int type_, IPAddress addr_) :
-	type(type_), addr(addr_) { };
+    inline int type() const { return _type; };
+    virtual hashcode_t hashcode() const { return _type; };
+    inline bool operator==(ClientKey other) const { return _type == other._type; };
 
-    inline bool operator==(ClientKey other) const { return addr == other.addr; };
+    virtual void serialize(ei_x &) const;
+};
+
+class ClientKeyIP : public ClientKey {
+private:
+    IPAddress _addr;
+
+public:
+    ClientKeyIP(const struct in_addr addr_) :
+	ClientKey(AF_INET), _addr(addr_) { };
+    ClientKeyIP(const IPAddress addr_) :
+	ClientKey(AF_INET), _addr(addr_) { };
+    virtual ~ClientKeyIP() {};
+
+    virtual hashcode_t hashcode() const { return _addr.hashcode(); };
+    inline bool operator==(ClientKeyIP other) const {
+	return ClientKey::operator==(other) && _addr == other._addr;
+    };
+
+    inline IPAddress addr() const { return _addr; };
+
+    virtual void serialize(ei_x &) const;
+};
+
+class ClientKeyEther : public ClientKey {
+private:
+    EtherAddress _addr;
+
+public:
+    ClientKeyEther(const unsigned char *addr_) :
+	ClientKey(AF_PACKET), _addr(addr_) { };
+    ClientKeyEther(EtherAddress addr_) :
+	ClientKey(AF_PACKET), _addr(addr_) { };
+    virtual ~ClientKeyEther() {};
+
+    virtual hashcode_t hashcode() const { return _addr.hashcode(); };
+    inline bool operator==(ClientKeyEther other) const {
+	return ClientKey::operator==(other) && _addr == other._addr;
+    };
+
+    inline EtherAddress addr() const { return _addr; };
+
+    virtual void serialize(ei_x &) const;
 };
 
 struct ClientRule {
@@ -84,25 +131,32 @@ private:
     uint32_t _id;
 
 public:
-    ClientKey key;
+    ClientKey *key;
 
     DF_GroupEntry::GroupId group;
     NATTable nat_rules;
     ClientRuleTable rules;
 
     ClientValue();
-    ClientValue(ClientKey key_, DF_GroupEntry::GroupId group_,
+    ClientValue(ClientKey *key_, DF_GroupEntry::GroupId group_,
 		NATTable nat_rules_, ClientRuleTable rules_) :
 	key(key_), group(group_), nat_rules(nat_rules_), rules(rules_) {};
     ~ClientValue();
 
+    inline int type() const { return key->type(); };
+    EtherAddress ether() const;
+    IPAddress addr() const;
     inline uint32_t id() const { return _id; };
 };
 
 
 typedef HashTable<uint32_t, ClientValue *> ClientTable;
 
-ei_x &operator<<(ei_x &x, const ClientKey &ck);
+inline ei_x &operator<<(ei_x &x, const ClientKey &ck) {
+    ck.serialize(x);
+    return x;
+}
+
 inline ei_x &operator<<(ei_x &x, const DF_RuleAction action)
 {
     x << atom(ClientRule::ActionType[action]);

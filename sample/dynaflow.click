@@ -97,15 +97,15 @@ intern_Deny :: ICMPError(intern, unreachable, 13) -> [0]out1;
 
 intern_unknown :: DF_Unknown(dfs);									// Queue to Control Element
 
-intern_src_MAC :: DF_GetGroupMAC(dfs, src, src);
+intern_src_Ether :: DF_GetGroupEther(dfs, src, src);
 intern_src_IP :: DF_GetGroupIP(dfs, -1, src, true, IP src);
 intern_src_IP[1] -> intern_unknown;									// We don't know the source IP, handle in unknown element
 
 policy_from_intern :: DF_GetFlow(dfs)
       -> intern_PEF_1st :: DF_PEFSwitch(unknown, else)
-      -> intern_src_MAC => (										// We don't have a flow, check if we know the source MAC
+      -> intern_src_Ether => (										// We don't have a flow, check if we know the source Ether
        	 input[0] -> output;
-	 input[1] -> intern_src_IP -> output								// We don't know the source MAC, try to check the source IP
+	 input[1] -> intern_src_IP -> output								// We don't know the source Ether, try to check the source IP
       )
       -> intern_dst_classify :: DF_GetGroupIP(dfs, -1, dst, IP dst)					// Check if we know the destination IP
       -> DF_SetAction(dfs)

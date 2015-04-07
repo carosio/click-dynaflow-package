@@ -16,6 +16,16 @@
 
 CLICK_DECLS
 
+DF_GroupEntry::DF_GroupEntry(GroupId id_) :
+  _id(id_), _client(NULL)
+{
+}
+
+DF_GroupEntry::DF_GroupEntry(ClientValue *client_) :
+ _id(client_->group), _client(client_)
+{
+}
+
 DF_GroupEntry::~DF_GroupEntry()
 {
 }

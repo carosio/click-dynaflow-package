@@ -203,6 +203,12 @@ DF_Store::gc_timer_hook(Timer *t, void *user_data)
         t->reschedule_after_sec(store->_gc_interval_sec);
 }
 
+DF_GroupEntryEther *
+DF_Store::lookup_group_ether(EtherAddress &addr) const
+{
+    return ether_groups.get(addr);
+}
+
 DF_GroupEntryIP *
 DF_Store::lookup_group_ip(uint32_t addr) const
 {
@@ -272,7 +278,7 @@ void DF_Store::notify_packet_in(const Packet *p)
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
 				 DF_Store *store_,
 				 ClientTable &clients_,
-				 GroupTableMAC &mac_groups_,
+				 GroupTableEther &ether_groups_,
 				 GroupTableIP &ip_groups_,
 				 FlowTable &flows_,
 				 bool debug_, bool trace_)
@@ -280,7 +286,7 @@ DF_Store::connection::connection(int fd_, ErlConnect *conp_,
       in_closed(false), out_closed(false),
       conp(*conp_), x_in(2048), x_out(2048),
       store(store_), clients(clients_),
-      mac_groups(mac_groups_), ip_groups(ip_groups_),
+      ether_groups(ether_groups_), ip_groups(ip_groups_),
       flows(flows_)
 {
 }
@@ -336,12 +342,11 @@ DF_Store::connection::decode_groups()
 }
 
 // Key: {inet,<<172,20,48,19>>}
-ClientKey
+ClientKey *
 DF_Store::connection::decode_client_key()
 {
     int type;
     int size;
-    struct in_addr addr;
 
     if (trace)
 	click_chatter("decode_client_key: %s\n", x_in.unparse().c_str());
@@ -349,13 +354,27 @@ DF_Store::connection::decode_client_key()
     if (x_in.decode_tuple_header() != 2)
 	throw ei_badarg();
 
-    if (x_in.decode_atom() == "inet") {
+    String t = x_in.decode_atom();
+
+    if (t == "inet") {
+	struct in_addr addr;
+
 	x_in.get_type(&type, &size);
 	if (type != ERL_BINARY_EXT || size != 4)
 	    throw ei_badarg();
 	x_in.decode_binary((void *)&addr, sizeof(addr));
-	return ClientKey(AF_INET, IPAddress(addr));
+	return new ClientKeyIP(addr);
     }
+    else if (t == "ether") {
+	unsigned char addr[6];
+
+	x_in.get_type(&type, &size);
+	if (type != ERL_BINARY_EXT || size != 6)
+	    throw ei_badarg();
+	x_in.decode_binary((void *)&addr, sizeof(addr));
+	return new ClientKeyEther(addr);
+    }
+
     else
 	throw ei_badarg();
 }
@@ -505,7 +524,7 @@ DF_Store::connection::decode_client_rules_list()
 
 // Value: {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}
 ClientValue *
-DF_Store::connection::decode_client_value(ClientKey key)
+DF_Store::connection::decode_client_value(ClientKey *key)
 {
     if (trace)
 	click_chatter("decode_client_value: %s\n", x_in.unparse().c_str());
@@ -522,24 +541,35 @@ DF_Store::connection::decode_client_value(ClientKey key)
 
 // client sample {{inet,<<172,20,48,19>>}, {<<"DEFAULT">>,[],[{<<"Class 1">>,<<"Class 2">>,accept},{<<"Class 2">>,<<"Class 1">>,drop}]}}
 void
-DF_Store::connection::decode_client()
+DF_Store::connection::decode_client_entry()
 {
-    if (trace)
-	click_chatter("decode_client: %s\n", x_in.unparse().c_str());
-
-    if (x_in.decode_tuple_header() != 2)
-	throw ei_badarg();
-
-    ClientKey key = decode_client_key();
+    ClientKey *key = decode_client_key();
     ClientValue *value = decode_client_value(key);
 
     click_chatter("insert client: %08x, %p\n", value->id(), value);
     clients[value->id()] = value;
 
-    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
-    if (trace)
-	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
-    ip_groups.push_back(ip_grp);
+    switch (value->type()) {
+    case AF_PACKET: {
+	DF_GroupEntryEther *grp = new DF_GroupEntryEther(value);
+	if (trace)
+	    click_chatter("decode_group_entry: %s\n", grp->unparse().c_str());
+	ether_groups[value->ether()] = grp;
+
+	break;
+    }
+    case AF_INET: {
+	DF_GroupEntryIP *grp = new DF_GroupEntryIP(value);
+	if (trace)
+	    click_chatter("decode_group_entry: %s\n", grp->unparse().c_str());
+	ip_groups.push_back(grp);
+
+	break;
+    }
+
+    default:
+	break;
+    }
 }
 
 void
@@ -564,7 +594,13 @@ DF_Store::connection::decode_clients()
 	    break;
 	}
 
-	decode_client();
+	if (trace)
+	    click_chatter("decode_client: %s\n", x_in.unparse().c_str());
+
+	if (x_in.decode_tuple_header() != 2)
+	    throw ei_badarg();
+
+	decode_client_entry();
     } while (arity-- > 0);
 }
 
@@ -572,8 +608,8 @@ DF_Store::connection::decode_clients()
 void
 DF_Store::connection::dump_groups()
 {
-    for (GroupTableMAC::const_iterator it = mac_groups.begin(); it != mac_groups.end(); ++it) {
-	x_out << list(1) << **it;
+    for (GroupTableEther::const_iterator it = ether_groups.begin(); it != ether_groups.end(); ++it) {
+	x_out << list(1) << *it.value();
     }
     for (GroupTableIP::const_iterator it = ip_groups.begin(); it != ip_groups.end(); ++it) {
 	x_out << list(1) << **it;
@@ -618,16 +654,7 @@ DF_Store::connection::erl_insert(int arity)
     if (arity != 3)
 	throw ei_badarg();
 
-    ClientKey key = decode_client_key();
-    ClientValue *value = decode_client_value(key);
-
-    clients[value->id()] = value;
-    click_chatter("insert client: %08x, %p\n", value->id(), value);
-
-    DF_GroupEntryIP *ip_grp = new DF_GroupEntryIP(value);
-    if (trace)
-	click_chatter("decode_group: %s\n", ip_grp->unparse().c_str());
-    ip_groups.push_back(ip_grp);
+    decode_client_entry();
 
     x_out << ok;
 }
@@ -817,7 +844,7 @@ DF_Store::initialize_connection(int fd, ErlConnect *conp)
     add_select(fd, SELECT_READ);
     if (_conns.size() <= fd)
         _conns.resize(fd + 1);
-    _conns[fd] = new connection(fd, conp, this, clients, mac_groups, ip_groups, flows, true);
+    _conns[fd] = new connection(fd, conp, this, clients, ether_groups, ip_groups, flows, true);
 }
 
 void
