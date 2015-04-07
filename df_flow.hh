@@ -76,13 +76,13 @@ public:
     FlowData reverse() const;
 
     inline bool operator==(const FlowData other) const {
-	return memcmp(&data, &other.data, sizeof(data) == 0);
+	return memcmp(&data, &other.data, sizeof(data)) == 0;
     };
 
     StringAccum& unparse(StringAccum& sa) const;
     String unparse() const;
 
-    inline hashcode_t hashcode() const {
+    hashcode_t hashcode() const {
 	return jhash(&data, sizeof(data), 0);
     };
 
