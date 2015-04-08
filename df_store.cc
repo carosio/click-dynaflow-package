@@ -663,7 +663,7 @@ void
 DF_Store::connection::erl_dump(int arity)
 {
     if (trace)
-	click_chatter("erl_init: %d\n", arity);
+	click_chatter("erl_dump: %d\n", arity);
 
     if (arity == 1) {
 	x_out << tuple(3);
@@ -685,23 +685,125 @@ DF_Store::connection::erl_dump(int arity)
 	throw ei_badarg();
 }
 
+const Handler*
+DF_Store::connection::parse_handler(Element **es)
+{
+    Element *e = NULL;
+    int type;
+    int size;
+
+    x_in.get_type(&type, &size);
+    if (type == ERL_ATOM_EXT) {
+	e = store->router()->root_element();
+    } else {
+	int arity = x_in.decode_tuple_header();
+
+	if (arity != 2)
+	    throw ei_badarg();
+
+        x_in.get_type(&type, &size);
+	if (type == ERL_ATOM_EXT) {
+	    String ename = x_in.decode_atom();
+	    e = store->router()->find(ename);
+	} else {
+	    int num = x_in.decode_ulong();
+	    if (num > 0 && num <= store->router()->nelements())
+		e = store->router()->element(num - 1);
+	}
+    }
+
+    if (!e)
+	throw ei_badarg();
+
+    String hname = x_in.decode_atom();
+
+    // Then find handler.
+    const Handler* h = Router::handler(e, hname);
+    if (h && h->visible())
+	*es = e;
+    else
+	throw ei_badarg();
+
+    return h;
+}
+
+void
+DF_Store::connection::erl_read(int arity)
+{
+    if (trace)
+	click_chatter("erl_read: %d\n", arity);
+
+    if (arity == 0)
+	throw ei_badarg();
+
+    Element *e;
+    const Handler* h = parse_handler(&e);
+    arity--;
+
+    //    if (trace)
+    click_chatter("%s(%d): erl_read: %p, %p", store->declaration().c_str(), fd, e, h);
+
+    if (!h->read_visible()) {
+	x_out << tuple(2) << error << atom("write-only");
+	return;
+    }
+
+    String param;
+
+    if (arity != 0)
+	param = x_in.decode_binary_string();
+
+    String data = h->call_read(e, param, 0);
+
+    x_out << tuple(2) << ok << binary(data);
+}
+
+void
+DF_Store::connection::erl_write(int arity)
+{
+    if (trace)
+	click_chatter("erl_write: %d\n", arity);
+
+    if (arity == 0)
+	throw ei_badarg();
+
+    Element *e;
+    const Handler* h = parse_handler(&e);
+    arity--;
+
+    //    if (trace)
+    click_chatter("%s(%d): erl_write: %p, %p", store->declaration().c_str(), fd, e, h);
+
+    if (!h->writable()) {
+	x_out << tuple(2) << error << atom("read-only");
+	return;
+    }
+
+    String param;
+
+    if (arity != 0)
+	param = x_in.decode_binary_string();
+
+    click_chatter("%s(%d): erl_write: %s, %s", store->declaration().c_str(), fd, e->declaration().c_str(), param.c_str());
+
+    int result = h->call_write(param, e, 0);
+    if (result < 0)
+	x_out << tuple(2) << error << result;
+    else
+	x_out << ok;
+}
+
 // Erlang generic call handlers
 
 void
 DF_Store::connection::handle_gen_call_click(const String fn, int arity)
 {
-    if (fn == "bind") {
-	erl_bind(arity);
-    }
-    if (fn == "init") {
-	erl_init(arity);
-    }
-    if (fn ==  "insert") {
-	erl_insert(arity);
-    }
-    if (fn ==  "dump") {
-	erl_dump(arity);
-    }
+    if (fn == "bind")        erl_bind(arity);
+    else if (fn == "init")   erl_init(arity);
+    else if (fn == "insert") erl_insert(arity);
+    else if (fn == "dump")   erl_dump(arity);
+    else if (fn == "read")   erl_read(--arity);
+    else if (fn == "write")  erl_write(--arity);
     else
 	x_out << error;
 }

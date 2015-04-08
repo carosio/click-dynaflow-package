@@ -124,11 +124,15 @@ private:
 	// Dump Handler
 	void dump_groups();
 
+	const Handler * parse_handler(Element **es);
+
 	// Erlang call handler
 	void erl_bind(int arity);
 	void erl_init(int arity);
 	void erl_insert(int arity);
 	void erl_dump(int arity);
+	void erl_read(int arity);
+	void erl_write(int arity);
 
 	// Erlang generic call handler
 	void handle_gen_call_click(const String fn, int arity);
