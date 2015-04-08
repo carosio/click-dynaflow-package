@@ -1,5 +1,5 @@
-#ifndef DF_UNKNOWN_IP_HH
-#define DF_UNKNOWN_IP_HH
+#ifndef DF_PACKET_IN_IP_HH
+#define DF_PACKET_IN_IP_HH
 #include <click/element.hh>
 #include "df_store.hh"
 
@@ -32,12 +32,12 @@
 
 class DF_Store;
 
-class DF_Unknown : public Element {
+class DF_PacketIn : public Element {
 public:
-    DF_Unknown() CLICK_COLD;
-    ~DF_Unknown() CLICK_COLD;
+    DF_PacketIn() CLICK_COLD;
+    ~DF_PacketIn() CLICK_COLD;
 
-    const char *class_name() const	{ return "DF_Unknown"; }
+    const char *class_name() const	{ return "DF_PacketIn"; }
     const char *port_count() const	{ return PORTS_1_0; }
 
     int configure(Vector<String> &, ErrorHandler *) CLICK_COLD;
@@ -46,8 +46,8 @@ public:
     void push(int, Packet *);
 
 private:
-
     DF_Store *_store;
+    String _reason;
 };
 
 CLICK_ENDDECLS

@@ -95,7 +95,7 @@ out2 :: DropBroadcasts
 
 intern_Deny :: ICMPError(intern, unreachable, 13) -> [0]out1;
 
-intern_unknown :: DF_Unknown(dfs);									// Queue to Control Element
+intern_unknown :: DF_PacketIn(dfs);									// Queue to Control Element
 
 intern_src_Ether :: DF_GetGroupEther(dfs, src, src);
 intern_src_IP :: DF_GetGroupIP(dfs, -1, src, true, IP src);
@@ -168,7 +168,7 @@ extern_dst_IP[1] -> Discard;										// We don't know the destination IP, disca
 extern_src_classify[1] -> Discard;									// We don't know the source IP, discard the packet
 
 extern_noaction :: Discard;     									// TODO: WTF?
-extern_unknown :: DF_Unknown(dfs);
+extern_unknown :: DF_PacketIn(dfs);
 
 extern_PEF[0] -> out1;											// Accept   -> continue with Forwarding
 extern_PEF[1] -> Discard;										// Drop     -> discard the packet

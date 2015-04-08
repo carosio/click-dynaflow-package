@@ -268,11 +268,11 @@ DF_Store::delete_flow(Flow *f)
     delete f;
 }
 
-void DF_Store::notify_packet_in(const Packet *p)
+void DF_Store::notify_packet_in(const String &reason, const Packet *p)
 {
     for (Vector<connection *>::iterator it = _conns.begin(); it != _conns.end(); ++it)
         if (*it)
-	    (*it)->notify_packet_in(p);
+	    (*it)->notify_packet_in(reason, p);
 }
 
 DF_Store::connection::connection(int fd_, ErlConnect *conp_,
@@ -785,7 +785,7 @@ DF_Store::connection::handle_msg(const String to)
 }
 
 void
-DF_Store::connection::notify_packet_in(const Packet *p)
+DF_Store::connection::notify_packet_in(const String &reason, const Packet *p)
 {
     int r __attribute__((unused));
 
@@ -793,7 +793,7 @@ DF_Store::connection::notify_packet_in(const Packet *p)
 	click_chatter("Packet-In: %p\n", p);
 
     x_out.reset();
-    x_out << version << tuple(2) << atom("packet_in") << p;
+    x_out << version << tuple(3) << atom("packet_in") << atom(reason) << p;
 
     if (debug)
 	click_chatter("Notify-Out: %s\n", x_out.unparse(0).c_str());

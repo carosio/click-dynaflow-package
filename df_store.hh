@@ -42,7 +42,7 @@ public:
 
     void expire_flows();
 
-    void notify_packet_in(const Packet *p);
+    void notify_packet_in(const String &reason, const Packet *p);
 
 private:
     int _listen_fd;
@@ -138,7 +138,7 @@ private:
 
     public:
 	// Notifies
-	void notify_packet_in(const Packet *);
+	void notify_packet_in(const String &reason, const Packet *);
     };
     Vector<connection *> _conns;
 
