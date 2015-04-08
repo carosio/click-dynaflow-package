@@ -24,35 +24,35 @@ DF_PEFSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
         return errh->error("need %d arguments, one per output port", noutputs());
 
     for (int slot = 0; slot < conf.size(); slot++) {
-        String s = conf[slot];
+	String s = conf[slot];
 
 	click_chatter("%s: slot %d -> %s\n", declaration().c_str(), slot, s.c_str());
 
-        if(s.lower() == "accept") {
+        if(s == "accept") {
             mapping[DF_RULE_ACCEPT] = slot;
-        } else if(s.lower() == "drop") {
+        } else if(s == "drop") {
             mapping[DF_RULE_DROP] = slot;
-        } else if(s.lower() == "deny") {
+        } else if(s == "deny") {
             mapping[DF_RULE_DENY] = slot;
-        } else if(s.lower() == "unknown") {
+        } else if(s == "unknown") {
             mapping[DF_RULE_UNKNOWN] = slot;
-        } else if(s.lower() == "no_action") {
+        } else if(s == "no_action") {
             mapping[DF_RULE_NO_ACTION] = slot;
-        } else if(s.lower() == "else") {
+        } else if(s == "-") {
             else_port = slot;
         } else {
             return errh->error("unknown action: %s", s.c_str());
         }
     }
 
-    if(else_port != -1) {
-        for(int i = 0; i < DF_RULE_SIZE; i++) {
+    if (else_port != -1) {
+        for (int i = 0; i < DF_RULE_SIZE; i++) {
             if(mapping[i] == DF_RULE_ELSE)
                 mapping[i] = else_port;
         }
     }
 
-    for(int i = 0; i < DF_RULE_SIZE; i++)
+    for (int i = 0; i < DF_RULE_SIZE; i++)
 	click_chatter("%s: config %d -> %d\n", declaration().c_str(), i, mapping[i]);
 
     return 0;

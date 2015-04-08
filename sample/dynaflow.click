@@ -102,7 +102,7 @@ intern_src_IP :: DF_GetGroupIP(dfs, -1, src, true, IP src);
 intern_src_IP[1] -> intern_unknown;									// We don't know the source IP, handle in unknown element
 
 policy_from_intern :: DF_GetFlow(dfs)
-      -> intern_PEF_1st :: DF_PEFSwitch(unknown, else)
+      -> intern_PEF_1st :: DF_PEFSwitch(unknown, -)
       -> intern_src_Ether => (										// We don't have a flow, check if we know the source Ether
        	 input[0] -> output;
 	 input[1] -> intern_src_IP -> output								// We don't know the source Ether, try to check the source IP
@@ -110,7 +110,7 @@ policy_from_intern :: DF_GetFlow(dfs)
       -> intern_dst_classify :: DF_GetGroupIP(dfs, -1, dst, IP dst)					// Check if we know the destination IP
       -> DF_SetAction(dfs)
       -> DF_SaveAnno(dfs)										// Now, that we know the Src and Dst group, store the annontation
-      -> intern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, else);			//    and apply the Policy
+      -> intern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, -);				//    and apply the Policy
 
 intern_PEF_1st[1] -> intern_PEF;									// Else
 
@@ -132,11 +132,11 @@ intern_arp_class[2] -> Strip(14)
 extern_Deny :: ICMPError(extern, unreachable, 13) -> [0]out1;
 
 policy_to_intern :: DF_GetFlow(dfs)
-      -> extern_PEF_1st :: DF_PEFSwitch(unknown, else)
+      -> extern_PEF_1st :: DF_PEFSwitch(unknown, -)
       -> extern_dst_IP :: DF_GetGroupIP(dfs, -1, dst, true, IP dst)
       -> extern_src_classify :: DF_GetGroupIP(dfs, -1, src, IP src)					// Check if we know the source IP
       -> DF_SaveAnno(dfs)										// Now, that we know the Src and Src group, store the annontation
-      -> extern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, else);			//    and apply the Policy
+      -> extern_PEF :: DF_PEFSwitch(accept, drop, deny, unknown, no_action, -);				//    and apply the Policy
 
 rt[0] -> Discard;											// TODO: deliver to localhost
 rt[1] -> policy_to_intern;

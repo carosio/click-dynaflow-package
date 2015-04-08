@@ -6,7 +6,7 @@
 /*
  * =c
  *
- * DF_PEFSwitch(action1,...,actionN)
+ * DF_PEFSwitch([ accept | drop | deny | unknown | no_action ], -)
  *
  * =s classification
  *
@@ -21,7 +21,7 @@
  * =e
  * For example,
  *
- *  DF_PEFSwitch(unknown, else);
+ *  DF_PEFSwitch(unknown, -);
  *
  *  creates an element with two outputs. Each packet where the ACTION_ANNO is
  *  set to "unknown" are sent to output 0, all others to output 1.
