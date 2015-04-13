@@ -70,6 +70,25 @@ intern_arp_class[0] -> ARPResponder(intern)     // ARP queries
 intern_arp_class[1] -> [1]intern_arpq;          // ARP responses
 intern_arp_class[3] -> Discard;
 
+intern_raw_inject :: StoreEtherAddress(intern, src)
+		  -> Strip(14)			// Work on the IP Packet
+		  -> CheckIPHeader(CHECKSUM false, VERBOSE true)
+		  -> SetIPChecksum
+		  -> SetUDPChecksum
+		  -> StoreIPAddress(intern, src)
+		  -> Unstrip(14)
+		  -> intern_dev;
+
+intern_ip_inject :: CheckIPHeader(CHECKSUM false, VERBOSE true)
+		  -> SetIPChecksum
+		  -> SetUDPChecksum
+		  -> StoreIPAddress(intern, src)
+		  -> [0]intern_arpq
+		  -> intern_dev;
+
+DF_PacketOut(dfs) -> intern_raw_inject;
+DF_PacketOut(dfs) -> intern_ip_inject;
+
 // output on interface INTERN
 out1 :: DropBroadcasts
       -> gio1 :: IPGWOptions(intern)
@@ -97,13 +116,14 @@ intern_Deny :: ICMPError(intern, unreachable, 13) -> [0]out1;
 
 intern_unknown :: DF_PacketIn(dfs);									// Queue to Control Element
 
-intern_src_Ether :: DF_GetGroupEther(dfs, src, src);
 intern_src_IP :: DF_GetGroupIP(dfs, -1, src, true, IP src);
 intern_src_IP[1] -> intern_unknown;									// We don't know the source IP, handle in unknown element
 
+dhcp_server_intern :: DF_PacketIn(dfs, dhcp);
+
 policy_from_intern :: DF_GetFlow(dfs)
       -> intern_PEF_1st :: DF_PEFSwitch(unknown, -)
-      -> intern_src_Ether => (										// We don't have a flow, check if we know the source Ether
+      -> DF_GetGroupEther(dfs, src, src) => (								// We don't have a flow, check if we know the source Ether
        	 input[0] -> output;
 	 input[1] -> intern_src_IP -> output								// We don't know the source Ether, try to check the source IP
       )
@@ -125,7 +145,12 @@ intern_PEF[5] -> intern_Deny;										// Else     -> TODO: What ?
 
 intern_arp_class[2] -> Strip(14)
         -> CheckIPHeader
-	-> policy_from_intern;
+	-> IPClassifier(udp && dst port bootps, -) => (
+	   input[0] -> CheckUDPHeader									// DHCP Request
+		    -> Unstrip(14)
+		    -> dhcp_server_intern;
+	   input[1] -> policy_from_intern;								// Other IP
+	);
 
 // extern -> intern
 
