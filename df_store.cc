@@ -287,7 +287,8 @@ DF_Store::connection::connection(int fd_, ErlConnect *conp_,
       conp(*conp_), x_in(2048), x_out(2048),
       store(store_), clients(clients_),
       ether_groups(ether_groups_), ip_groups(ip_groups_),
-      flows(flows_)
+      flows(flows_),
+      _timestamp(true), _headroom(Packet::default_headroom)
 {
 }
 
@@ -685,7 +686,28 @@ DF_Store::connection::erl_dump(int arity)
 	throw ei_badarg();
 }
 
-const Handler*
+// in Erlang typespec:
+//   Element :: atom() | integer()
+Element * DF_Store::connection::parse_click_element()
+{
+    int type;
+    int size;
+
+    x_in.get_type(&type, &size);
+    if (type == ERL_ATOM_EXT) {
+	String ename = x_in.decode_atom();
+	return store->router()->find(ename);
+    } else {
+	int num = x_in.decode_ulong();
+	if (num > 0 && num <= store->router()->nelements())
+	    return store->router()->element(num - 1);
+    }
+    return NULL;
+}
+
+// in Erlang typespec:
+//   {Element :: atom() | integer(), Handler :: atom()} | Handler :: atom()
+const Handler *
 DF_Store::connection::parse_handler(Element **es)
 {
     Element *e = NULL;
@@ -701,15 +723,7 @@ DF_Store::connection::parse_handler(Element **es)
 	if (arity != 2)
 	    throw ei_badarg();
 
-        x_in.get_type(&type, &size);
-	if (type == ERL_ATOM_EXT) {
-	    String ename = x_in.decode_atom();
-	    e = store->router()->find(ename);
-	} else {
-	    int num = x_in.decode_ulong();
-	    if (num > 0 && num <= store->router()->nelements())
-		e = store->router()->element(num - 1);
-	}
+	e = parse_click_element();
     }
 
     if (!e)
@@ -793,8 +807,51 @@ DF_Store::connection::erl_write(int arity)
 	x_out << ok;
 }
 
-// Erlang generic call handlers
+// {Element, Input, Packet}
+void
+DF_Store::connection::erl_push(int arity)
+{
+    int type;
+    int size;
 
+    if (trace)
+	click_chatter("erl_write: %d\n", arity);
+
+    if (arity != 3)
+	throw ei_badarg();
+
+    Element *e = parse_click_element();
+    if (!e)
+	throw ei_badarg();
+
+    int input = x_in.decode_ulong();
+    //    if (trace)
+    click_chatter("%s(%d): erl_push: %s[%d]", store->declaration().c_str(), fd, e->declaration().c_str(), input);
+
+    if (input >= e->ninputs() || !e->input_is_push(input))
+	throw ei_badarg();
+
+    x_in.get_type(&type, &size);
+    if (type != ERL_BINARY_EXT)
+	throw ei_badarg();
+
+    WritablePacket *_rq = Packet::make(_headroom, 0, size, 0);
+    if (!_rq)
+	throw ei_badarg();
+
+    x_in.decode_binary(_rq->data(), _rq->length());
+
+    // set timestamp
+    if (_timestamp)
+	_rq->timestamp_anno().assign_now();
+
+    e->push(input, _rq);
+    _rq = 0;
+
+    x_out << ok;
+}
+
+// Erlang generic call handlers
 void
 DF_Store::connection::handle_gen_call_click(const String fn, int arity)
 {
@@ -804,6 +861,7 @@ DF_Store::connection::handle_gen_call_click(const String fn, int arity)
     else if (fn == "dump")   erl_dump(arity);
     else if (fn == "read")   erl_read(--arity);
     else if (fn == "write")  erl_write(--arity);
+    else if (fn == "push")   erl_push(--arity);
     else
 	x_out << error;
 }

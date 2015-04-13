@@ -97,6 +97,9 @@ private:
         void read();
 
     private:
+	bool _timestamp;              // set the timestamp on received packets
+	unsigned _headroom;
+
 	// data structure en/decoder functions
 	void decode_group();
 	void decode_groups();
@@ -124,6 +127,7 @@ private:
 	// Dump Handler
 	void dump_groups();
 
+	Element * parse_click_element();
 	const Handler * parse_handler(Element **es);
 
 	// Erlang call handler
@@ -133,6 +137,7 @@ private:
 	void erl_dump(int arity);
 	void erl_read(int arity);
 	void erl_write(int arity);
+	void erl_push(int arity);
 
 	// Erlang generic call handler
 	void handle_gen_call_click(const String fn, int arity);
