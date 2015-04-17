@@ -2,8 +2,7 @@
 
 Tobias Steinicke <tobias.steinicke@travelping.com>
 
-https://gitlab.tpip.net/tsteinicke/click-df-package
-
+https://github.com/carosio/click-dynaflow-package
 
 == Flow ID ==
 

@@ -2,7 +2,7 @@
 
 Tobias Steinicke <tobias.steinicke@travelping.com>
 
-https://gitlab.tpip.net/tsteinicke/click-tp-package
+https://github.com/carosio/click-dynaflow-package
 
 == Configs ==
 
